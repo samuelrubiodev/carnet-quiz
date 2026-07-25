@@ -14,3 +14,4 @@ data/jobs/*
 .env
 *.egg-info/
 .atl/
+unsloth_compiled_cache/moe_utils.py
