@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -93,8 +92,17 @@ def backup(settings: Settings | None = None) -> Path:
     settings = ensure_data_dirs(settings or get_settings())
     if not settings.database_path.exists():
         raise FileNotFoundError("Base de datos no inicializada")
-    destination = settings.database_path.with_name(f"{settings.database_path.stem}-{datetime.now():%Y%m%d%H%M%S}.bak")
-    shutil.copy2(settings.database_path, destination)
+    destination = settings.database_path.with_name(
+        f"{settings.database_path.stem}-{datetime.now():%Y%m%d%H%M%S}.bak"
+    )
+    source = sqlite3.connect(settings.database_path)
+    target = sqlite3.connect(destination)
+    try:
+        source.backup(target)
+        target.commit()
+    finally:
+        target.close()
+        source.close()
     return destination
 
 

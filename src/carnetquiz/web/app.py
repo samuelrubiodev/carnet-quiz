@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 
 from ..database import initialize
 from ..repositories.questions import create_attempt, get_attempt, record_answer
-from ..services import jobs, transcripts, videos
+from ..services import data_management, jobs, transcripts, videos
 from ..services.selection import select_questions, shuffle_options
 from ..services.statistics import dashboard_statistics
 
@@ -103,4 +103,107 @@ def create_app() -> FastAPI:
 
     @app.get("/statistics", response_class=HTMLResponse)
     def statistics(request: Request) -> HTMLResponse: return page(request, "statistics.html", stats=dashboard_statistics())
+
+    @app.get("/admin/data", response_class=HTMLResponse)
+    def data_admin(request: Request) -> HTMLResponse:
+        return page(request, "data.html", counts=data_management.current_counts())
+
+    @app.post("/admin/data/preview", response_class=HTMLResponse)
+    def data_preview(
+        request: Request,
+        resource: str = Form(...),
+        identifier: str = Form(...),
+        cascade: bool = Form(False),
+    ) -> HTMLResponse:
+        try:
+            plan = data_management.build_deletion_plan(resource, identifier, cascade)
+            error = None
+        except Exception as caught:
+            plan = None
+            error = str(caught)
+        return page(
+            request,
+            "data.html",
+            counts=data_management.current_counts(),
+            plan=plan,
+            error=error,
+        )
+
+    @app.post("/admin/data/delete", response_class=HTMLResponse)
+    def data_delete(
+        request: Request,
+        resource: str = Form(...),
+        identifier: str = Form(...),
+        cascade: bool = Form(False),
+        confirm: str = Form(""),
+    ) -> HTMLResponse:
+        plan = None
+        try:
+            plan = data_management.build_deletion_plan(resource, identifier, cascade)
+            if plan.blocked:
+                raise data_management.DeletionBlocked(plan.warnings[-1])
+            if confirm != "DELETE":
+                return page(
+                    request,
+                    "data.html",
+                    counts=data_management.current_counts(),
+                    plan=plan,
+                    error="Escribí DELETE para confirmar el borrado selectivo.",
+                )
+            result = data_management.execute_plan(plan)
+            error = None if result["cleanup_complete"] else "Limpieza de archivos incompleta."
+        except Exception as caught:
+            result = None
+            error = str(caught)
+        return page(
+            request,
+            "data.html",
+            counts=data_management.current_counts(),
+            plan=plan,
+            result=result,
+            error=error,
+        )
+
+    @app.post("/admin/data/preview-reset", response_class=HTMLResponse)
+    def data_preview_reset(request: Request) -> HTMLResponse:
+        try:
+            plan = data_management.build_reset_plan()
+            error = None
+        except Exception as caught:
+            plan = None
+            error = str(caught)
+        return page(
+            request,
+            "data.html",
+            counts=data_management.current_counts(),
+            reset_plan=plan,
+            error=error,
+        )
+
+    @app.post("/admin/data/reset", response_class=HTMLResponse)
+    def data_reset(request: Request, confirm: str = Form("")) -> HTMLResponse:
+        plan = None
+        try:
+            plan = data_management.build_reset_plan()
+            if not data_management.reset_confirmation_is_valid(confirm):
+                return page(
+                    request,
+                    "data.html",
+                    counts=data_management.current_counts(),
+                    reset_plan=plan,
+                    error="El reseteo exige escribir exactamente RESET CARNETQUIZ.",
+                )
+            result = data_management.execute_plan(plan)
+            error = None if result["cleanup_complete"] else "Limpieza de archivos incompleta."
+        except Exception as caught:
+            result = None
+            error = str(caught)
+        return page(
+            request,
+            "data.html",
+            counts=data_management.current_counts(),
+            reset_plan=plan,
+            result=result,
+            error=error,
+        )
     return app

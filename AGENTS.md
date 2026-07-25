@@ -98,6 +98,7 @@ Never mention the video, lesson, transcript, instructor, narrator or explanation
 
 ## Database and repository safety
 
+- Los agentes no deben ejecutar borrados selectivos ni reseteos de datos salvo petición explícita del usuario.
 - Never edit SQLite directly.
 - Use the `carnetquiz` CLI or approved MCP tools.
 - Never bypass validation.

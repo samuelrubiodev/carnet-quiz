@@ -15,3 +15,4 @@ data/jobs/*
 *.egg-info/
 .atl/
 unsloth_compiled_cache/
+data-backups

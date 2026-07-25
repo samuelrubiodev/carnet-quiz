@@ -40,7 +40,17 @@ carnetquiz job commit JOB_ID --yes
 carnetquiz questions stats
 carnetquiz db check
 carnetquiz db backup
+carnetquiz data reset --dry-run
+carnetquiz data reset
+carnetquiz data delete video VIDEO_ID --dry-run
+carnetquiz data delete transcript VIDEO_ID --cascade
+carnetquiz data delete job JOB_ID
+carnetquiz data delete concept CONCEPT_ID
+carnetquiz data delete question QUESTION_ID
+carnetquiz data delete attempt ATTEMPT_ID
 ```
+
+`data reset` exige escribir exactamente `RESET CARNETQUIZ` en modo interactivo o usar `--yes --confirm "RESET CARNETQUIZ"`. Los borrados selectivos exigen confirmación; en JSON requieren `--yes`. Estas operaciones son irreversibles sin una copia de seguridad. Crean copias consistentes fuera de `data/` salvo que se indique expresamente `--no-backup`. Ver [docs/DATA_MANAGEMENT.md](docs/DATA_MANAGEMENT.md).
 
 `video add` consulta metadatos con `yt-dlp`; `transcript fetch` prioriza subtítulos manuales españoles, automáticos españoles, luego idioma original. Importación manual admite VTT, SRT, JSON3 y `.txt` segmentado: `00:00:00 --> 00:00:05 | texto`. Todos los comandos aceptan ayuda con `--help`; consultas principales aceptan `--json`.
 
@@ -59,7 +69,7 @@ Ambas Skills ejecutan el mismo flujo: comprobar entorno, añadir o localizar ví
 
 ### Pi, Codex y otros agentes CLI
 
-Iniciá el agente desde la raíz del proyecto y pedile que use la Skill universal:
+Inicia el agente desde la raíz del proyecto y pedile que use la Skill universal:
 
 ```text
 Lee y sigue .agents/skills/process-video/SKILL.md.
@@ -67,7 +77,7 @@ Procesa este vídeo de YouTube hasta 20m:
 https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
-También podés indicar una petición equivalente en lenguaje natural:
+También puedes indicar una petición equivalente en lenguaje natural:
 
 ```text
 Procesa https://www.youtube.com/watch?v=VIDEO_ID hasta 30 minutos con CarnetQuiz.
@@ -116,7 +126,7 @@ Ver [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md). Trabajo deja `request.json`, rec
 
 ## Web
 
-`carnetquiz serve --port 8000` inicia FastAPI local. Incluye inicio, vídeos, transcripciones, trabajos, creación/realización de test, resultados y estadísticas. Selección: aleatoria, equilibrada, nuevas, fallos, inteligente y examen. Opciones se barajan al presentar sin perder respuesta correcta.
+`carnetquiz serve --port 8000` inicia FastAPI local. Incluye inicio, vídeos, transcripciones, trabajos, creación/realización de test, resultados, estadísticas y **Administración de datos**. Esta última sección muestra cantidades, previsualiza planes y ejecuta borrados solo mediante `POST`; el reseteo exige `RESET CARNETQUIZ`. Selección: aleatoria, equilibrada, nuevas, fallos, inteligente y examen. Opciones se barajan al presentar sin perder respuesta correcta.
 
 ## MCP
 
