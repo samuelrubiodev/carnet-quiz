@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<h1>Estadísticas</h1><p>{{ stats.total }} preguntas; {{ stats.shown }} apariciones; {{ stats.correct }} aciertos; {{ stats.wrong }} fallos.</p><h2>Por tema</h2><ul>{% for topic in stats.topics %}<li>{{ topic.topic }}: {{ topic.questions }} preguntas, {{ topic.wrong or 0 }} fallos</li>{% endfor %}</ul>{% endblock %}

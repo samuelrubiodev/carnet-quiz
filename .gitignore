@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+data/*.db
+data/*.db-*
+data/transcripts/*
+!data/transcripts/.gitkeep
+data/jobs/*
+!data/jobs/.gitkeep
+*.log
+.env
+*.egg-info/
+.atl/

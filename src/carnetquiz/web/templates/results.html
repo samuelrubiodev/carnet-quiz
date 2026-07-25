@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<h1>Resultados</h1><p>{{ attempt.correct_count }} aciertos, {{ attempt.wrong_count }} fallos de {{ attempt.question_count }}.</p><ul>{% for answer in attempt.answers %}<li><b>{{ answer.question }}</b> — {% if answer.is_correct %}correcta{% else %}fallada{% endif %}<br>{{ answer.explanation }}</li>{% endfor %}</ul>{% endblock %}
