@@ -87,7 +87,6 @@ Do not infer or invent the job ID.
 Read only the following job files:
 
 ```text
-data/jobs/JOB_ID/context.md
 data/jobs/JOB_ID/request.json
 data/jobs/JOB_ID/transcript.json
 ```
@@ -98,7 +97,10 @@ Also read the JSON Schema files belonging to the current job.
 
 Do not inspect unrelated source files unless a required CarnetQuiz command fails because of an apparent application defect.
 
-Treat `context.md` as the complete source of generation instructions.
+This skill is the complete source of agent workflow and generation instructions.
+
+Use `request.json` for the current job configuration, `transcript.json` as the
+only factual source, and the job-local JSON schemas as the output contracts.
 
 Generate and write:
 

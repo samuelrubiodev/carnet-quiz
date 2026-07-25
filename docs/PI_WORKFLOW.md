@@ -8,14 +8,13 @@ carnetquiz job create VIDEO_ID --until 30m
 
 Then agent must:
 
-1. Read `data/jobs/JOB_ID/context.md`.
-2. Read `transcript.json`.
-3. Fill `concepts.json`.
-4. Fill `questions.json`.
-5. Fill `review.json`.
-6. Run `carnetquiz job validate JOB_ID`.
-7. Correct rejected elements once only.
-8. Validate once again.
-9. Run `carnetquiz job commit JOB_ID --yes`.
+1. Read `request.json`, `transcript.json` and the job-local JSON schemas.
+2. Fill `concepts.json`.
+3. Fill `questions.json`.
+4. Fill `review.json`.
+5. Run `carnetquiz job validate JOB_ID`.
+6. Correct rejected elements once only.
+7. Validate once again.
+8. Run `carnetquiz job commit JOB_ID --yes`.
 
 Agent must not edit SQLite or add knowledge absent from transcript.

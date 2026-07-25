@@ -26,7 +26,7 @@ Use this workflow:
 1. Add or locate the video.
 2. Fetch its transcript.
 3. Create a generation job for the requested interval.
-4. Read the generated job's `context.md`.
+4. Read the job's `request.json`, `transcript.json` and JSON schemas.
 5. Process only that job.
 6. Validate and commit valid results.
 
@@ -78,7 +78,7 @@ carnetquiz COMMAND --help
 
 For question generation, the current job's `transcript.json` is the only factual source.
 
-The current job's `context.md` contains the complete generation and review instructions.
+Follow the generation and review instructions in `AGENTS.md` and the applicable skill.
 
 Do not use:
 

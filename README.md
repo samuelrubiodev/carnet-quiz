@@ -58,7 +58,7 @@ carnetquiz job create VIDEO_ID --until 30m
 
 Después, indicá al agente:
 
-> Lee `data/jobs/JOB_ID/context.md` y `transcript.json`. Completa `concepts.json`, `questions.json` y `review.json` usando únicamente la transcripción. Cita siempre segmentos y tiempos. No uses conocimiento externo ni edites SQLite. Ejecuta la validación y realiza como máximo una revisión y una reparación.
+> Lee `request.json`, `transcript.json` y los esquemas JSON del trabajo. Completa `concepts.json`, `questions.json` y `review.json` usando únicamente la transcripción. Cita siempre segmentos y tiempos. No uses conocimiento externo ni edites SQLite. Ejecuta la validación y realiza como máximo una revisión y una reparación.
 
 El agente debe finalizar con:
 
@@ -67,13 +67,13 @@ carnetquiz job validate JOB_ID
 carnetquiz job commit JOB_ID --yes
 ```
 
-Cada trabajo contiene contexto, esquemas JSON, transcripción recortada, archivos de salida e informe de validación. Las reglas para agentes están en [AGENTS.md](AGENTS.md), el flujo detallado en [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md) y la integración MCP en [docs/MCP.md](docs/MCP.md).
+Cada trabajo contiene configuración, esquemas JSON, transcripción recortada, archivos de salida e informe de validación. Las reglas para agentes están en [AGENTS.md](AGENTS.md), el flujo detallado en [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md) y la integración MCP en [docs/MCP.md](docs/MCP.md).
 
 No se requieren APIs de IA de pago ni claves externas. El agente puede ejecutarse con el modelo y las herramientas locales disponibles en el entorno.
 
 ## Trabajo manual
 
-Ver [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md). Trabajo deja `request.json`, recorte `transcript.json`, contexto, schemas locales, entradas JSON, informe validación. Validador rechaza referencias fuera de rango, segmentos faltantes, preguntas duplicadas, opciones repetidas, HTML, estructuras inválidas y respuestas correctas ausentes. Importación es transaccional; trabajo parcialmente válido puede importar preguntas válidas.
+Ver [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md). Trabajo deja `request.json`, recorte `transcript.json`, schemas locales, entradas JSON e informe de validación. Validador rechaza referencias fuera de rango, segmentos faltantes, preguntas duplicadas, opciones repetidas, HTML, estructuras inválidas y respuestas correctas ausentes. Importación es transaccional; trabajo parcialmente válido puede importar preguntas válidas.
 
 ## Web
 

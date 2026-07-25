@@ -26,23 +26,10 @@ Use this workflow:
 1. Add or locate the video.
 2. Fetch its transcript.
 3. Create a generation job for the requested interval.
-4. Read the generated job's `context.md`.
+4. Read the job's `request.json`, `transcript.json` and JSON schemas.
 5. Process only that job.
 6. Validate and commit valid results.
 
-## Pi prompt template
-
-A Pi prompt template is available:
-
-```text
-/process-video <youtube-url> [time-limit]
-```
-
-Example:
-
-```text
-/process-video https://youtube.com/watch?v=example 30m
-```
 
 ## Main commands
 
@@ -77,8 +64,6 @@ carnetquiz COMMAND --help
 ## Job source of truth
 
 For question generation, the current job's `transcript.json` is the only factual source.
-
-The current job's `context.md` contains the complete generation and review instructions.
 
 Do not use:
 
