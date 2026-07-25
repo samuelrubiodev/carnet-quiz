@@ -44,32 +44,71 @@ carnetquiz db backup
 
 `video add` consulta metadatos con `yt-dlp`; `transcript fetch` prioriza subtítulos manuales españoles, automáticos españoles, luego idioma original. Importación manual admite VTT, SRT, JSON3 y `.txt` segmentado: `00:00:00 --> 00:00:05 | texto`. Todos los comandos aceptan ayuda con `--help`; consultas principales aceptan `--json`.
 
-## Uso con agentes de IA
+## Uso como Skill con agentes CLI
 
-El proyecto está diseñado para agentes como **Pi**, **Claude Code**, **Codex** y otros clientes compatibles con MCP. La CLI es la fuente de verdad; el agente no debe editar SQLite directamente.
+CarnetQuiz se usa mediante una **Skill** que guía al agente mientras ejecuta la CLI. No es necesario pedirle al agente que genere una estructura ni copiar prompts manualmente.
 
-Flujo recomendado:
+### Ubicación de Skills
+
+- **Universal:** `.agents/skills/process-video/SKILL.md`. Es la Skill principal para Pi, Codex y otros agentes CLI compatibles.
+- **Claude Code:** `.claude/skills/carnet-quizvideo/SKILL.md`. Adaptador de Claude Code con comando `/process-video`.
+- **Reglas generales:** [AGENTS.md](AGENTS.md).
+- **Reglas específicas de Claude Code:** [CLAUDE.md](CLAUDE.md).
+
+Ambas Skills ejecutan el mismo flujo: comprobar entorno, añadir o localizar vídeo, obtener subtítulos, crear un trabajo, leer únicamente el trabajo actual, generar JSON, validar, reparar como máximo una vez e importar.
+
+### Pi, Codex y otros agentes CLI
+
+Iniciá el agente desde la raíz del proyecto y pedile que use la Skill universal:
+
+```text
+Lee y sigue .agents/skills/process-video/SKILL.md.
+Procesa este vídeo de YouTube hasta 20m:
+https://www.youtube.com/watch?v=VIDEO_ID
+```
+
+También podés indicar una petición equivalente en lenguaje natural:
+
+```text
+Procesa https://www.youtube.com/watch?v=VIDEO_ID hasta 30 minutos con CarnetQuiz.
+```
+
+El agente debe ejecutar el flujo definido por la Skill, no editar SQLite ni usar conocimiento externo. La transcripción del trabajo actual es la única fuente factual.
+
+### Claude Code
+
+Desde la raíz del proyecto, usá el comando de la Skill:
+
+```text
+/process-video https://www.youtube.com/watch?v=VIDEO_ID 30m
+```
+
+El límite de tiempo es opcional; si se omite, la Skill usa `30m`.
+
+### Flujo CLI ejecutado por la Skill
+
+La Skill ejecuta comandos equivalentes a:
 
 ```bash
+carnetquiz doctor
 carnetquiz video add URL
 carnetquiz transcript fetch VIDEO_ID
 carnetquiz job create VIDEO_ID --until 30m
-```
-
-Después, indicá al agente:
-
-> Lee `request.json`, `transcript.json` y los esquemas JSON del trabajo. Completa `concepts.json`, `questions.json` y `review.json` usando únicamente la transcripción. Cita siempre segmentos y tiempos. No uses conocimiento externo ni edites SQLite. Ejecuta la validación y realiza como máximo una revisión y una reparación.
-
-El agente debe finalizar con:
-
-```bash
 carnetquiz job validate JOB_ID
 carnetquiz job commit JOB_ID --yes
 ```
 
-Cada trabajo contiene configuración, esquemas JSON, transcripción recortada, archivos de salida e informe de validación. Las reglas para agentes están en [AGENTS.md](AGENTS.md), el flujo detallado en [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md) y la integración MCP en [docs/MCP.md](docs/MCP.md).
+Durante el procesamiento, el agente escribe únicamente en el trabajo actual:
 
-No se requieren APIs de IA de pago ni claves externas. El agente puede ejecutarse con el modelo y las herramientas locales disponibles en el entorno.
+```text
+data/jobs/JOB_ID/concepts.json
+data/jobs/JOB_ID/questions.json
+data/jobs/JOB_ID/review.json
+```
+
+Cada trabajo contiene configuración, esquemas JSON, transcripción recortada e informe de validación. Las preguntas deben citar segmentos y tiempos, tener una única respuesta válida y basarse solo en `transcript.json`.
+
+No se requieren APIs de IA de pago ni claves externas. El agente aporta el razonamiento; CarnetQuiz aporta CLI, validación determinista, SQLite e importación transaccional. El flujo completo está documentado en [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md); MCP está disponible como alternativa en [docs/MCP.md](docs/MCP.md).
 
 ## Trabajo manual
 
