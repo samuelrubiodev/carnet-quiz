@@ -2,6 +2,8 @@
 
 Aplicación local Python para estudiar teoría de conducción con preguntas trazables a transcripciones de YouTube. No llama modelos, no pide API keys y no descarga vídeo/audio para buscar subtítulos.
 
+CarnetQuiz está preparado para trabajar con agentes de IA locales o asistentes de programación como Pi, Claude Code y Codex. El agente analiza los trabajos, genera conceptos y preguntas fundamentados únicamente en la transcripción, y utiliza la CLI o el MCP para validar e importar resultados.
+
 ## Requisitos e instalación
 
 Python 3.11+, `yt-dlp` en `PATH` solo para YouTube.
@@ -41,6 +43,33 @@ carnetquiz db backup
 ```
 
 `video add` consulta metadatos con `yt-dlp`; `transcript fetch` prioriza subtítulos manuales españoles, automáticos españoles, luego idioma original. Importación manual admite VTT, SRT, JSON3 y `.txt` segmentado: `00:00:00 --> 00:00:05 | texto`. Todos los comandos aceptan ayuda con `--help`; consultas principales aceptan `--json`.
+
+## Uso con agentes de IA
+
+El proyecto está diseñado para agentes como **Pi**, **Claude Code**, **Codex** y otros clientes compatibles con MCP. La CLI es la fuente de verdad; el agente no debe editar SQLite directamente.
+
+Flujo recomendado:
+
+```bash
+carnetquiz video add URL
+carnetquiz transcript fetch VIDEO_ID
+carnetquiz job create VIDEO_ID --until 30m
+```
+
+Después, indicá al agente:
+
+> Lee `data/jobs/JOB_ID/context.md` y `transcript.json`. Completa `concepts.json`, `questions.json` y `review.json` usando únicamente la transcripción. Cita siempre segmentos y tiempos. No uses conocimiento externo ni edites SQLite. Ejecuta la validación y realiza como máximo una revisión y una reparación.
+
+El agente debe finalizar con:
+
+```bash
+carnetquiz job validate JOB_ID
+carnetquiz job commit JOB_ID --yes
+```
+
+Cada trabajo contiene contexto, esquemas JSON, transcripción recortada, archivos de salida e informe de validación. Las reglas para agentes están en [AGENTS.md](AGENTS.md), el flujo detallado en [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md) y la integración MCP en [docs/MCP.md](docs/MCP.md).
+
+No se requieren APIs de IA de pago ni claves externas. El agente puede ejecutarse con el modelo y las herramientas locales disponibles en el entorno.
 
 ## Trabajo manual
 
