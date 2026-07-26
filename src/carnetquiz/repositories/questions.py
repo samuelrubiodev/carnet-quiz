@@ -5,15 +5,33 @@ import json
 from ..database import connect
 
 
-def list_questions(video_ids: list[str] | None = None) -> list[dict[str, object]]:
+def list_questions(
+    video_ids: list[str] | None = None,
+    start: float | None = None,
+    until: float | None = None,
+) -> list[dict[str, object]]:
     sql = "SELECT q.*, c.topic FROM questions q JOIN concepts c ON c.id=q.concept_id WHERE q.status='valid'"
     values: list[object] = []
     if video_ids:
         sql += f" AND q.video_id IN ({','.join('?' * len(video_ids))})"; values.extend(video_ids)
+    if start is not None:
+        sql += " AND q.source_start >= ?"; values.append(start)
+    if until is not None:
+        sql += " AND q.source_start < ?"; values.append(until)
     with connect() as db:
         rows = [dict(row) for row in db.execute(sql, values)]
     for row in rows: row["options"] = json.loads(str(row.pop("options_json")))
     return rows
+
+
+def list_concept_ids() -> set[str]:
+    with connect() as db:
+        return {str(row["id"]) for row in db.execute("SELECT id FROM concepts")}
+
+
+def list_question_ids() -> set[str]:
+    with connect() as db:
+        return {str(row["id"]) for row in db.execute("SELECT id FROM questions")}
 
 
 def question_statistics() -> dict[str, int]:

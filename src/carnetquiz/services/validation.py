@@ -40,24 +40,35 @@ def validate_job_directory(job: dict[str, object]) -> tuple[ValidationReport, li
     except (ValueError, json.JSONDecodeError) as error: raw_concepts = []; report.issues.append(ValidationIssue(level="error", code="concepts_json", message=str(error)))
     try: raw_questions = _read_array(directory / "questions.json")
     except (ValueError, json.JSONDecodeError) as error: raw_questions = []; report.issues.append(ValidationIssue(level="error", code="questions_json", message=str(error)))
-    segments = {int(segment["id"]): segment for segment in video_repo.list_segments(str(job["video_id"]), float(job["end_seconds"]))}
+    segments = {
+        int(segment["id"]): segment
+        for segment in video_repo.list_segments(
+            str(job["video_id"]),
+            start=float(job["start_seconds"]),
+            until=float(job["end_seconds"]),
+        )
+    }
     concepts: list[ConceptInput] = []; seen_concepts: set[str] = set()
+    existing_concept_ids = question_repo.list_concept_ids()
     for raw in raw_concepts:
         try: concept = ConceptInput.model_validate(raw)
         except ValidationError as error:
             report.issues.append(ValidationIssue(level="error", code="invalid_concept", message=str(error), item_id=str(raw.get("id")) if isinstance(raw, dict) else None)); continue
-        if concept.id in seen_concepts: report.issues.append(ValidationIssue(level="error", code="duplicate_concept_id", message="ID de concepto duplicado", item_id=concept.id)); continue
+        if concept.id in seen_concepts or concept.id in existing_concept_ids:
+            report.issues.append(ValidationIssue(level="error", code="duplicate_concept_id", message="ID de concepto ya utilizado", item_id=concept.id)); continue
         seen_concepts.add(concept.id)
         _validate_sources(concept.id, concept.source_segment_ids, concept.source_start, concept.source_end, segments, job, report)
         if not any(issue.item_id == concept.id and issue.level == "error" for issue in report.issues): concepts.append(concept); report.valid_concept_ids.append(concept.id)
     questions: list[QuestionInput] = []; seen_questions: set[str] = set(); normalized_questions: list[tuple[str, str]] = []
     existing = [(str(row["id"]), str(row["question"])) for row in question_repo.list_questions()]
+    existing_question_ids = question_repo.list_question_ids()
     for raw in raw_questions:
         try: question = QuestionInput.model_validate(raw)
         except ValidationError as error:
             report.issues.append(ValidationIssue(level="error", code="invalid_question", message=str(error), item_id=str(raw.get("id")) if isinstance(raw, dict) else None)); continue
         error_before = len(report.errors)
-        if question.id in seen_questions: report.issues.append(ValidationIssue(level="error", code="duplicate_question_id", message="ID de pregunta duplicado", item_id=question.id))
+        if question.id in seen_questions or question.id in existing_question_ids:
+            report.issues.append(ValidationIssue(level="error", code="duplicate_question_id", message="ID de pregunta ya utilizado", item_id=question.id))
         seen_questions.add(question.id)
         if question.concept_id not in report.valid_concept_ids: report.issues.append(ValidationIssue(level="error", code="unknown_concept", message="Concepto inexistente o inválido", item_id=question.id))
         _validate_sources(question.id, question.source_segment_ids, question.source_start, question.source_end, segments, job, report)

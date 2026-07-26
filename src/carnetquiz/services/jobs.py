@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
 from pathlib import Path
@@ -30,18 +31,97 @@ def parse_duration(value: str | int | float) -> float:
 def _write_json(path: Path, payload: object) -> None: path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def create_job(video_id: str, until: str | float, start: float = 0) -> dict[str, object]:
-    settings = ensure_data_dirs(); end = parse_duration(until); video = video_repo.get_video(video_id)
-    if end <= start: raise ValueError("Fin debe ser mayor que inicio")
-    if video["duration_seconds"] and end > float(video["duration_seconds"]): raise ValueError("Intervalo posterior a duración de vídeo")
-    segments = video_repo.list_segments(video_id, end)
-    if not segments: raise ValueError("No hay transcripción en intervalo solicitado")
-    job_id = f"job-{uuid.uuid4().hex[:12]}"; directory = settings.jobs_dir / job_id; directory.mkdir(mode=0o700)
-    request = {"video_id": video_id, "title": video["title"], "start_seconds": start, "end_seconds": end, "language": video["language"] or settings.preferred_language, "recommended_questions_per_concept": settings.questions_per_concept, "allowed_question_types": ["definition", "direct", "practical_case", "comparison", "negative", "priority", "exception", "sign_interpretation", "true_false_group"], "difficulty": "mixed", "rules": ["Use only transcript evidence", "Do not write SQLite", "One review and one optional repair maximum"], "schema_version": SCHEMA_VERSION}
-    _write_json(directory / "request.json", request); _write_json(directory / "transcript.json", {"video_id": video_id, "segments": segments}); _write_json(directory / "concepts.json", []); _write_json(directory / "questions.json", []); _write_json(directory / "review.json", {"reviewed_question_ids": [], "rejected_question_ids": [], "notes": "", "repaired": False})
-    _write_json(directory / "concepts.schema.json", ConceptInput.model_json_schema()); _write_json(directory / "questions.schema.json", QuestionInput.model_json_schema()); _write_json(directory / "review.schema.json", ReviewInput.model_json_schema())
-    payload = {"id": job_id, "video_id": video_id, "start_seconds": start, "end_seconds": end, "status": "ready", "created_at": now(), "directory": str(directory), "schema_version": SCHEMA_VERSION}; repo.create_job(payload)
-    return repo.get_job(job_id)
+def _parse_job_boundary(value: str | int | float, label: str) -> float:
+    if isinstance(value, str) and value.strip().startswith("-"):
+        raise ValueError(f"{label} no puede ser negativo")
+    seconds = parse_duration(value)
+    if seconds < 0:
+        raise ValueError(f"{label} no puede ser negativo")
+    if not math.isfinite(seconds):
+        raise ValueError(f"{label} no es válido")
+    return seconds
+
+
+def create_job(
+    video_id: str,
+    until: str | int | float,
+    start: str | int | float = "0s",
+) -> dict[str, object]:
+    start_seconds = _parse_job_boundary(start, "Inicio")
+    end_seconds = _parse_job_boundary(until, "Fin")
+
+    settings = ensure_data_dirs()
+    video = video_repo.get_video(video_id)
+    if end_seconds <= start_seconds:
+        raise ValueError("Fin debe ser mayor que inicio")
+    duration = video["duration_seconds"]
+    if duration is not None:
+        duration_seconds = float(duration)
+        if start_seconds >= duration_seconds:
+            raise ValueError("Inicio debe ser anterior a duración de vídeo")
+        if end_seconds > duration_seconds:
+            raise ValueError("Intervalo posterior a duración de vídeo")
+
+    segments = video_repo.list_segments(
+        video_id,
+        start=start_seconds,
+        until=end_seconds,
+    )
+    if not segments:
+        raise ValueError("No hay transcripción en intervalo solicitado")
+
+    overlaps = repo.list_overlapping_jobs(video_id, start_seconds, end_seconds)
+    job_id = f"job-{uuid.uuid4().hex[:12]}"
+    directory = settings.jobs_dir / job_id
+    directory.mkdir(mode=0o700)
+    request = {
+        "video_id": video_id,
+        "title": video["title"],
+        "start_seconds": start_seconds,
+        "end_seconds": end_seconds,
+        "language": video["language"] or settings.preferred_language,
+        "recommended_questions_per_concept": settings.questions_per_concept,
+        "allowed_question_types": [
+            "definition", "direct", "practical_case", "comparison", "negative",
+            "priority", "exception", "sign_interpretation", "true_false_group",
+        ],
+        "difficulty": "mixed",
+        "rules": [
+            "Use only transcript evidence",
+            "Do not write SQLite",
+            "One review and one optional repair maximum",
+        ],
+        "schema_version": SCHEMA_VERSION,
+    }
+    _write_json(directory / "request.json", request)
+    _write_json(directory / "transcript.json", {"video_id": video_id, "segments": segments})
+    _write_json(directory / "concepts.json", [])
+    _write_json(directory / "questions.json", [])
+    _write_json(
+        directory / "review.json",
+        {"reviewed_question_ids": [], "rejected_question_ids": [], "notes": "", "repaired": False},
+    )
+    _write_json(directory / "concepts.schema.json", ConceptInput.model_json_schema())
+    _write_json(directory / "questions.schema.json", QuestionInput.model_json_schema())
+    _write_json(directory / "review.schema.json", ReviewInput.model_json_schema())
+    payload = {
+        "id": job_id,
+        "video_id": video_id,
+        "start_seconds": start_seconds,
+        "end_seconds": end_seconds,
+        "status": "ready",
+        "created_at": now(),
+        "directory": str(directory),
+        "schema_version": SCHEMA_VERSION,
+    }
+    repo.create_job(payload)
+    result = repo.get_job(job_id)
+    if overlaps:
+        result["warnings"] = [
+            "Advertencia: intervalo solapado con "
+            + ", ".join(str(item["id"]) for item in overlaps)
+        ]
+    return result
 
 
 def get_job(job_id: str) -> dict[str, object]: return repo.get_job(job_id)

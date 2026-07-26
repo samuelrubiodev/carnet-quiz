@@ -1,36 +1,48 @@
 ---
 
 name: process-video
-description: Add a YouTube study video to CarnetQuiz, obtain its transcript, generate and validate a question bank up to a requested time limit, and commit the completed job. Use when the user asks to process, import, analyse, or generate CarnetQuiz questions from a YouTube study video.
+description: Add a YouTube study video to CarnetQuiz, obtain its transcript, generate and validate a question bank for a requested video interval, and commit the completed job. Use when the user asks to process, import, analyse, or generate CarnetQuiz questions from a YouTube study video.
 
 ---
 
 # Process a CarnetQuiz study video
 
-Process a YouTube study video through the existing CarnetQuiz CLI.
+Process one interval of a YouTube study video through CarnetQuiz CLI.
 
 ## Inputs
 
-Obtain the following values from the user's request:
+Resolve and retain these values for the whole workflow:
 
-* `VIDEO_URL`: the YouTube video URL.
-* `TIME_LIMIT`: the point through which content must be processed.
+* `VIDEO_URL`: YouTube video URL.
+* `START_TIME`: inclusive interval start.
+* `END_TIME`: exclusive interval end.
 
-If the user does not specify a time limit, use:
+Accepted duration formats: seconds (`1800`), minutes (`30m`), hours (`1h`) and clock notation (`01:30:00`). Do not invent times.
 
-```text
-30m
-```
+Resolve user requests as follows:
 
-If no YouTube URL was provided, request it before running any commands.
+* “Procesa este vídeo hasta el minuto 30.”
+  * `VIDEO_URL` = supplied URL
+  * `START_TIME` = `0m`
+  * `END_TIME` = `30m`
+* “Procesa este vídeo desde el minuto 30 hasta el minuto 60.”
+  * `VIDEO_URL` = supplied URL
+  * `START_TIME` = `30m`
+  * `END_TIME` = `60m`
+* “Continúa este vídeo desde el minuto 30 hasta el 60.”
+  * `VIDEO_URL` = supplied URL
+  * `START_TIME` = `30m`
+  * `END_TIME` = `60m`
 
-Keep the resolved values available throughout the workflow. Do not substitute arbitrary values or invent identifiers.
+If only a final limit is supplied, set `START_TIME = 0m`. If no final limit is supplied, request it; do not choose an arbitrary interval.
 
-Follow the repository's applicable `AGENTS.md` instructions.
+If no YouTube URL was supplied, request it before running commands.
 
-Do not inspect the complete repository before beginning. Use the existing CarnetQuiz CLI and follow the direct workflow below.
+Keep the resolved `VIDEO_URL`, `START_TIME` and `END_TIME` unchanged. Do not use `last_processed_seconds` as an implicit start.
 
-## 1. Check the environment
+Follow repository `AGENTS.md` instructions. Do not inspect the complete repository before beginning.
+
+## 1. Check environment
 
 Run:
 
@@ -38,25 +50,19 @@ Run:
 carnetquiz doctor
 ```
 
-Stop and report the concrete problem only if CarnetQuiz is not usable.
+Stop and report the concrete problem if CarnetQuiz is not usable. Do not continue after a failed check.
 
-Do not continue with later commands after a failed environment check.
+## 2. Add or locate video
 
-## 2. Add or locate the video
-
-Run, replacing `VIDEO_URL` with the URL supplied by the user:
+Run, replacing `VIDEO_URL`:
 
 ```bash
 carnetquiz video add "$VIDEO_URL"
 ```
 
-Read the command output and retain the resulting video ID as `VIDEO_ID`.
+Retain reported `VIDEO_ID`. If video already exists, reuse its existing ID. Never infer an ID.
 
-If the video already exists, reuse its existing ID instead of creating a duplicate.
-
-Do not infer or invent the video ID.
-
-## 3. Obtain the transcript
+## 3. Obtain transcript once
 
 Run:
 
@@ -64,43 +70,44 @@ Run:
 carnetquiz transcript fetch "$VIDEO_ID"
 ```
 
-Do not download the complete video or its audio.
+If a valid transcript already exists, reuse it. Do not download the transcript again for each interval. Retain reported transcript source and language.
 
-If a valid transcript already exists, reuse it.
+## 4. Create exactly resolved interval job
 
-Retain any reported transcript source and language for the final response.
-
-## 4. Create the job
-
-Run, replacing `TIME_LIMIT` with the resolved processing limit:
+When only final limit was supplied, this compatible command is valid:
 
 ```bash
-carnetquiz job create "$VIDEO_ID" --until "$TIME_LIMIT"
+carnetquiz job create "$VIDEO_ID" --until "$END_TIME"
 ```
 
-Read the command output and retain the resulting job ID as `JOB_ID`.
+When both limits were supplied, run exactly:
 
-Do not infer or invent the job ID.
+```bash
+carnetquiz job create "$VIDEO_ID" --from "$START_TIME" --until "$END_TIME"
+```
 
-## 5. Process only the created job
+The resulting job contains transcript segments satisfying:
 
-Read only the following job files:
+```text
+segment.start_seconds >= START_TIME
+segment.start_seconds < END_TIME
+```
+
+Retain reported `JOB_ID` and verify `request.json` contains the resolved `start_seconds` and `end_seconds`. Do not silently replace either value.
+
+## 5. Process only created job
+
+Read only these files from the created job:
 
 ```text
 data/jobs/JOB_ID/request.json
 data/jobs/JOB_ID/transcript.json
+data/jobs/JOB_ID/concepts.schema.json
+data/jobs/JOB_ID/questions.schema.json
+data/jobs/JOB_ID/review.schema.json
 ```
 
-Replace `JOB_ID` with the actual job ID.
-
-Also read the JSON Schema files belonging to the current job.
-
-Do not inspect unrelated source files unless a required CarnetQuiz command fails because of an apparent application defect.
-
-This skill is the complete source of agent workflow and generation instructions.
-
-Use `request.json` for the current job configuration, `transcript.json` as the
-only factual source, and the job-local JSON schemas as the output contracts.
+`transcript.json` for this `JOB_ID` is the only factual source. Do not read another job's transcript or regenerate earlier intervals.
 
 Generate and write:
 
@@ -110,24 +117,9 @@ data/jobs/JOB_ID/questions.json
 data/jobs/JOB_ID/review.json
 ```
 
-Use only the current job's transcript as the factual source.
+All concepts, questions, options, feedback and explanations must be self-contained. Never mention the video, lesson, instructor, explanation, narrator, transcript or source material in visible educational content.
 
-Do not supplement the content with personal knowledge, web searches, other transcripts, repository documentation, or unrelated files.
-
-All user-visible concepts, questions, answer options, feedback, and explanations must stand on their own and be independent of the source video.
-
-Never mention any of the following in generated educational content:
-
-* The video.
-* The lesson.
-* The instructor.
-* The explanation.
-* The narrator.
-* The transcript.
-* The source material.
-* What was said or shown.
-
-Write the JSON files so that they conform exactly to the current job's schemas.
+Use unique concept and question IDs. Cite only segments and times inside `[start_seconds, end_seconds)`.
 
 ## 6. Validate
 
@@ -137,49 +129,27 @@ Run:
 carnetquiz job validate "$JOB_ID"
 ```
 
-Read the validation result carefully.
-
-If isolated items are rejected, perform at most one targeted repair affecting only those rejected items.
-
-Do not regenerate the complete concept set or question bank to repair isolated validation failures.
-
-After the permitted targeted repair, run validation exactly once more:
-
-```bash
-carnetquiz job validate "$JOB_ID"
-```
-
-Do not enter an iterative repair loop.
-
-If errors remain after the second validation, report them and do not perform additional repairs.
+If isolated items are rejected, perform at most one targeted repair. Validate once more. Never regenerate the complete bank or enter a repair loop. If errors remain, report them and do not import.
 
 ## 7. Import
 
-Commit the job only when validation explicitly permits import.
-
-Run:
+Import only after validation explicitly permits it:
 
 ```bash
 carnetquiz job commit "$JOB_ID"
 ```
 
-Do not run the commit command when validation does not permit it.
-
 ## 8. Final response
 
-Report:
+Report actual command/file values:
 
-* Video ID.
-* Job ID.
-* Processed interval.
-* Transcript source and language.
-* Number of concepts generated.
-* Number of questions generated.
-* Number of valid questions.
-* Number of rejected questions.
-* Whether the job was committed.
-* Any remaining errors.
+* `VIDEO_ID`
+* `JOB_ID`
+* resolved interval `START_TIME`–`END_TIME`
+* transcript source and language
+* concepts and questions generated
+* valid and rejected questions
+* commit result
+* remaining errors
 
-Base every reported value on actual command output or generated job files.
-
-Do not claim that a command succeeded unless it was actually executed successfully.
+Never claim success for a command not executed successfully.

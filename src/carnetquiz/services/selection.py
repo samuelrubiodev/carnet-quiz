@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 
 from ..repositories.questions import list_questions
+from .jobs import parse_duration
 
 
 def progress_state(question: dict[str, object]) -> str:
@@ -22,9 +23,23 @@ def _weight(question: dict[str, object], now: datetime) -> float:
     return 4 + wrong * 5 + (0 if shown else 6) + days / 7 + int(question["difficulty"]) - correct * 1.5
 
 
-def select_questions(mode: str, count: int, video_ids: list[str] | None = None, seed: int | None = None, include_mastered: bool = True) -> list[dict[str, object]]:
+def select_questions(
+    mode: str,
+    count: int,
+    video_ids: list[str] | None = None,
+    seed: int | None = None,
+    include_mastered: bool = True,
+    start: str | int | float | None = None,
+    until: str | int | float | None = None,
+) -> list[dict[str, object]]:
     if count < 1: raise ValueError("Cantidad debe ser positiva")
-    items = list_questions(video_ids)
+    start_seconds = parse_duration(start) if start is not None else (0.0 if until is not None else None)
+    until_seconds = parse_duration(until) if until is not None else None
+    if start_seconds is not None and start_seconds < 0: raise ValueError("Inicio no puede ser negativo")
+    if until_seconds is not None and until_seconds < 0: raise ValueError("Fin no puede ser negativo")
+    if start_seconds is not None and until_seconds is not None and until_seconds <= start_seconds:
+        raise ValueError("Fin debe ser mayor que inicio")
+    items = list_questions(video_ids, start=start_seconds, until=until_seconds)
     if not include_mastered: items = [item for item in items if progress_state(item) != "mastered"]
     if not items: return []
     rng = random.Random(seed) if seed is not None else random.SystemRandom()

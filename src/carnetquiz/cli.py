@@ -169,11 +169,26 @@ def transcript_import(video_id: str, file: Path, language: Annotated[str, typer.
 
 @transcript_app.command("show")
 def transcript_show(video_id: str, until: Annotated[str | None, typer.Option()] = None, search: Annotated[str | None, typer.Option()] = None, as_json: Annotated[bool, typer.Option("--json")] = False) -> None:
-    output(transcripts.list_segments(video_id, jobs.parse_duration(until) if until else None, search), as_json)
+    output(
+        transcripts.list_segments(
+            video_id,
+            until=jobs.parse_duration(until) if until else None,
+            search=search,
+        ),
+        as_json,
+    )
 
 
 @job_app.command("create")
-def job_create(video_id: str, until: Annotated[str, typer.Option()]) -> None: output(jobs.create_job(video_id, until))
+def job_create(
+    video_id: str,
+    until: Annotated[str, typer.Option("--until", help="Límite final exclusivo del intervalo.")],
+    start: Annotated[str, typer.Option("--from", help="Inicio inclusivo del intervalo.")] = "0s",
+) -> None:
+    try:
+        output(jobs.create_job(video_id, until, start))
+    except Exception as error:
+        _data_error(error, False, "job create")
 
 
 @job_app.command("list")

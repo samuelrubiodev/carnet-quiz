@@ -32,4 +32,10 @@ def fetch(video_id: str, language: str | None = None) -> int:
     return import_segments(video_id, parse_transcript_file(path, selected), subtitle_type)
 
 
-def list_segments(video_id: str, until: float | None = None, search: str | None = None) -> list[dict[str, object]]: return repo.list_segments(video_id, until, search)
+def list_segments(
+    video_id: str,
+    start: float | None = None,
+    until: float | None = None,
+    search: str | None = None,
+) -> list[dict[str, object]]:
+    return repo.list_segments(video_id, start=start, until=until, search=search)

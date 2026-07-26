@@ -36,8 +36,15 @@ def replace_segments(video_id: str, segments: list[SegmentInput], transcript_pat
     return len(segments)
 
 
-def list_segments(video_id: str, until: float | None = None, search: str | None = None) -> list[dict[str, object]]:
+def list_segments(
+    video_id: str,
+    start: float | None = None,
+    until: float | None = None,
+    search: str | None = None,
+) -> list[dict[str, object]]:
     sql, values = "SELECT * FROM transcript_segments WHERE video_id=?", [video_id]
+    if start is not None:
+        sql += " AND start_seconds >= ?"; values.append(start)
     if until is not None:
         sql += " AND start_seconds < ?"; values.append(until)
     if search:

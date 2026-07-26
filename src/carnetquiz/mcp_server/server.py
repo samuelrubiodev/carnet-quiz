@@ -24,10 +24,10 @@ def build_server():
     def fetch_transcript(video_id: str, language: str | None = None) -> dict[str, int]: return {"segments": transcripts.fetch(video_id, language)}
 
     @mcp.tool()
-    def get_transcript_range(video_id: str, until_seconds: float) -> list[dict[str, object]]: return transcripts.list_segments(video_id, until_seconds)
+    def get_transcript_range(video_id: str, until_seconds: float) -> list[dict[str, object]]: return transcripts.list_segments(video_id, until=until_seconds)
 
     @mcp.tool()
-    def create_generation_job(video_id: str, until: str) -> dict[str, object]: return jobs.create_job(video_id, until)
+    def create_generation_job(video_id: str, until: str, start: str = "0s") -> dict[str, object]: return jobs.create_job(video_id, until, start)
 
     @mcp.tool()
     def list_jobs() -> list[dict[str, object]]: return jobs.list_jobs()

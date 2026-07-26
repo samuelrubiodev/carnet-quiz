@@ -35,6 +35,8 @@ carnetquiz transcript fetch VIDEO_ID
 carnetquiz transcript import VIDEO_ID archivo.vtt
 carnetquiz transcript show VIDEO_ID --until 30m
 carnetquiz job create VIDEO_ID --until 30m
+carnetquiz job create VIDEO_ID --from 30m --until 60m
+carnetquiz job create VIDEO_ID --from 1h --until 01:30:00
 carnetquiz job validate JOB_ID
 carnetquiz job commit JOB_ID --yes
 carnetquiz questions stats
@@ -77,11 +79,15 @@ Procesa este vídeo de YouTube hasta 20m:
 https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
-También puedes indicar una petición equivalente en lenguaje natural:
+También puedes indicar peticiones equivalentes en lenguaje natural:
 
 ```text
 Procesa https://www.youtube.com/watch?v=VIDEO_ID hasta 30 minutos con CarnetQuiz.
+Procesa https://www.youtube.com/watch?v=VIDEO_ID desde el minuto 30 hasta el minuto 60.
+Continúa este vídeo desde el minuto 30 hasta el 60.
 ```
+
+La Skill resuelve `VIDEO_URL`, `START_TIME` y `END_TIME`. Si solo se indica el límite final, `START_TIME=0m`. Las fronteras son `[inicio, final)`: `segment.start_seconds >= inicio` y `segment.start_seconds < final`.
 
 El agente debe ejecutar el flujo definido por la Skill, no editar SQLite ni usar conocimiento externo. La transcripción del trabajo actual es la única fuente factual.
 
@@ -104,6 +110,7 @@ carnetquiz doctor
 carnetquiz video add URL
 carnetquiz transcript fetch VIDEO_ID
 carnetquiz job create VIDEO_ID --until 30m
+carnetquiz job create VIDEO_ID --from 30m --until 60m
 carnetquiz job validate JOB_ID
 carnetquiz job commit JOB_ID --yes
 ```
@@ -126,7 +133,9 @@ Ver [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md). Trabajo deja `request.json`, rec
 
 ## Web
 
-`carnetquiz serve --port 8000` inicia FastAPI local. Incluye inicio, vídeos, transcripciones, trabajos, creación/realización de test, resultados, estadísticas y **Administración de datos**. Esta última sección muestra cantidades, previsualiza planes y ejecuta borrados solo mediante `POST`; el reseteo exige `RESET CARNETQUIZ`. Selección: aleatoria, equilibrada, nuevas, fallos, inteligente y examen. Opciones se barajan al presentar sin perder respuesta correcta.
+`carnetquiz serve --port 8000` inicia FastAPI local. La creación de trabajos acepta `Desde` y `Hasta`, con inicio cero por defecto, y muestra cada intervalo como `00:30:00 – 01:00:00`. Los solapamientos se permiten y generan advertencia. La creación de tests puede filtrar por intervalo; sin filtro mantiene el banco acumulativo del vídeo.
+
+Incluye inicio, vídeos, transcripciones, trabajos, creación/realización de test, resultados, estadísticas y **Administración de datos**. Esta última sección muestra cantidades, previsualiza planes y ejecuta borrados solo mediante `POST`; el reseteo exige `RESET CARNETQUIZ`. Selección: aleatoria, equilibrada, nuevas, fallos, inteligente y examen. Opciones se barajan al presentar sin perder respuesta correcta.
 
 ## MCP
 
@@ -137,6 +146,8 @@ Ver [docs/PI_WORKFLOW.md](docs/PI_WORKFLOW.md). Trabajo deja `request.json`, rec
 ```bash
 .venv/bin/pytest
 .venv/bin/ruff check src tests
+carnetquiz doctor
+carnetquiz db check
 ```
 
 ## Límites conocidos

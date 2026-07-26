@@ -39,6 +39,7 @@ carnetquiz video add URL
 carnetquiz video list
 carnetquiz transcript fetch VIDEO_ID
 carnetquiz job create VIDEO_ID --until 30m
+carnetquiz job create VIDEO_ID --from 30m --until 60m
 carnetquiz job list
 carnetquiz job validate JOB_ID
 carnetquiz job commit JOB_ID
@@ -63,7 +64,7 @@ carnetquiz COMMAND --help
 
 ## Job source of truth
 
-For question generation, the current job's `transcript.json` is the only factual source.
+For question generation, the current job's `transcript.json` is the only factual source. It contains only segments in the resolved half-open interval `[start_seconds, end_seconds)`: segment start is included, final boundary excluded. Do not use `last_processed_seconds` as an implicit job start.
 
 Do not use:
 

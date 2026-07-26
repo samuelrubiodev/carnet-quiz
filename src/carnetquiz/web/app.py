@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -16,6 +17,16 @@ from ..services.statistics import dashboard_statistics
 
 ROOT = Path(__file__).parent
 templates = Jinja2Templates(directory=str(ROOT / "templates"))
+
+
+def format_seconds(value: float | int) -> str:
+    total = max(0, int(float(value)))
+    hours, remainder = divmod(total, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+templates.env.filters["duration"] = format_seconds
 
 
 def create_app() -> FastAPI:
@@ -39,17 +50,32 @@ def create_app() -> FastAPI:
 
     @app.get("/videos/{video_id}/transcript", response_class=HTMLResponse)
     def transcript(request: Request, video_id: str, until: float | None = None, search: str | None = None) -> HTMLResponse:
-        return page(request, "transcript.html", video=videos.get_video(video_id), segments=transcripts.list_segments(video_id, until, search))
+        return page(
+            request,
+            "transcript.html",
+            video=videos.get_video(video_id),
+            segments=transcripts.list_segments(video_id, until=until, search=search),
+        )
 
     @app.get("/jobs", response_class=HTMLResponse)
-    def job_list(request: Request) -> HTMLResponse:
-        return page(request, "jobs.html", jobs=jobs.list_jobs(), videos=videos.list_videos())
+    def job_list(request: Request, warning: str | None = None) -> HTMLResponse:
+        return page(request, "jobs.html", jobs=jobs.list_jobs(), videos=videos.list_videos(), warning=warning)
 
     @app.post("/jobs")
-    def create_job(video_id: str = Form(...), until: str = Form(...)) -> RedirectResponse:
-        try: jobs.create_job(video_id, until)
-        except Exception as error: raise HTTPException(400, str(error)) from error
-        return RedirectResponse("/jobs", 303)
+    def create_job(
+        video_id: str = Form(...),
+        start: str = Form("0s"),
+        until: str = Form(...),
+    ) -> RedirectResponse:
+        try:
+            created = jobs.create_job(video_id, until, start)
+        except Exception as error:
+            raise HTTPException(400, str(error)) from error
+        warnings = created.get("warnings", [])
+        location = "/jobs"
+        if warnings:
+            location += "?warning=" + quote(str(warnings[0]))
+        return RedirectResponse(location, 303)
 
     @app.post("/jobs/{job_id}/validate")
     def validate_job(job_id: str) -> RedirectResponse: jobs.validate_job(job_id); return RedirectResponse("/jobs", 303)
@@ -61,8 +87,20 @@ def create_app() -> FastAPI:
     def new_test(request: Request) -> HTMLResponse: return page(request, "new_test.html", videos=videos.list_videos())
 
     @app.post("/tests")
-    def start_test(mode: str = Form("random"), count: int = Form(10), video_ids: list[str] = Form(default=[])) -> RedirectResponse:
-        questions = select_questions(mode, count, video_ids or None)
+    def start_test(
+        mode: str = Form("random"),
+        count: int = Form(10),
+        video_ids: list[str] = Form(default=[]),
+        start: str | None = Form(None),
+        until: str | None = Form(None),
+    ) -> RedirectResponse:
+        questions = select_questions(
+            mode,
+            count,
+            video_ids or None,
+            start=start or None,
+            until=until or None,
+        )
         if not questions: raise HTTPException(400, "No hay preguntas disponibles")
         attempt_id = f"attempt-{uuid.uuid4().hex[:12]}"; create_attempt(attempt_id, video_ids, mode, len(questions), None)
         app.state.tests = getattr(app.state, "tests", {})
