@@ -10,9 +10,8 @@ data/transcripts/*
 !data/transcripts/.gitkeep
 data/jobs/*
 !data/jobs/.gitkeep
+data-backups/*/
 *.log
 .env
 *.egg-info/
 .atl/
-unsloth_compiled_cache/
-data-backups
