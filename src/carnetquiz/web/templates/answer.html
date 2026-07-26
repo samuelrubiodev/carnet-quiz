@@ -1,1 +1,51 @@
-{% extends "base.html" %}{% block content %}<h1>{% if correct %}Correcta{% else %}Incorrecta{% endif %}</h1>{% if show_explanation %}<p>{{ question.explanation }}</p><p>Referencia: {{ question.source_start }} s–{{ question.source_end }} s</p>{% else %}<p>Explicaciones disponibles al finalizar examen.</p>{% endif %}<a class="button" href="/tests/{{ attempt_id }}/{{ position+1 }}">{% if position == total %}Ver resultados{% else %}Siguiente{% endif %}</a>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{% if is_exam %}Respuesta registrada{% elif correct %}Respuesta correcta{% else %}Respuesta incorrecta{% endif %}{% endblock %}
+{% block content %}
+<section class="quiz-shell answer-shell" aria-labelledby="answer-title" data-feedback="true" data-sound-result="{% if is_exam %}exam{% elif correct %}correct{% else %}incorrect{% endif %}">
+    <div class="quiz-topline">
+        <div><p class="eyebrow">{{ mode_label }}</p><p class="quiz-counter">Pregunta <strong>{{ position }}</strong> de <strong>{{ total }}</strong></p></div>
+        <span class="quiz-percent">{{ (position * 100 / total)|round|int }}% completado</span>
+    </div>
+    <div class="quiz-progress" role="progressbar" aria-label="Progreso del test" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ position }}" aria-valuetext="Pregunta {{ position }} de {{ total }}">
+        <span style="width: {{ (position * 100 / total) }}%"></span>
+    </div>
+
+    {% if is_exam %}
+    <div class="feedback-banner feedback-exam" aria-live="polite"><span class="feedback-symbol" aria-hidden="true">•</span><div><strong id="answer-title">Respuesta registrada</strong><span>La corrección se mostrará al finalizar el examen.</span></div></div>
+    {% elif correct %}
+    <div class="feedback-banner feedback-correct" aria-live="polite"><span class="feedback-symbol" aria-hidden="true">✓</span><div><strong id="answer-title">Respuesta correcta</strong><span>Buen trabajo. Mantén este ritmo.</span></div></div>
+    {% else %}
+    <div class="feedback-banner feedback-incorrect" aria-live="polite"><span class="feedback-symbol" aria-hidden="true">!</span><div><strong id="answer-title">Respuesta incorrecta</strong><span>Revisa la explicación antes de continuar.</span></div></div>
+    {% endif %}
+
+    <div class="quiz-question answer-question">
+        {% if question.topic %}<span class="topic-tag">{{ question.topic }}</span>{% endif %}
+        <h1>{{ question.question }}</h1>
+    </div>
+    <div class="option-list option-list-review" aria-label="Opciones de respuesta">
+        {% for option in question.options %}
+        {% set is_selected = option.id == selected %}
+        {% set is_correct = option.id == question.correct_option %}
+        <div class="answer-option review-option {% if not is_exam and is_selected and correct %}is-correct{% elif not is_exam and is_selected and not correct %}is-incorrect{% elif not is_exam and is_correct %}is-correct{% endif %} {% if is_selected %}is-selected{% endif %}">
+            <span class="option-letter" aria-hidden="true">{{ "ABCD"[loop.index0] }}</span>
+            <span class="option-text">{{ option.text }}</span>
+            {% if not is_exam and is_selected and correct %}<span class="review-label review-label-correct">Tu respuesta · correcta</span>{% elif not is_exam and is_selected and not correct %}<span class="review-label review-label-incorrect">Tu respuesta</span>{% elif not is_exam and is_correct %}<span class="review-label review-label-correct">Respuesta correcta</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if show_explanation %}
+    <section class="explanation-panel" aria-labelledby="explanation-title">
+        <p class="eyebrow">Aprende de la respuesta</p>
+        <h2 id="explanation-title">Explicación</h2>
+        <p>{{ question.explanation }}</p>
+        <div class="source-reference"><span>Referencia: {{ question.source_start|timestamp }}–{{ question.source_end|timestamp }}</span>{% if question.video_url %}<a class="text-link" href="{{ question.video_url }}{% if '?' in question.video_url %}&{% else %}?{% endif %}t={{ question.source_start|int }}s" target="_blank" rel="noopener noreferrer">Ver fragmento ↗</a>{% endif %}</div>
+    </section>
+    {% endif %}
+
+    <div class="quiz-submit-row answer-next-row">
+        <span class="answer-next-note">{% if is_exam %}Sin corrección hasta el final{% else %}Respuesta revisada{% endif %}</span>
+        <a class="button button-primary button-large" href="/tests/{{ attempt_id }}/{{ position + 1 }}">{% if position == total %}Ver resultados{% else %}Siguiente pregunta{% endif %} <span aria-hidden="true">→</span></a>
+    </div>
+</section>
+{% endblock %}

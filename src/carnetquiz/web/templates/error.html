@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Error {{ error_code }}{% endblock %}
+{% block content %}
+<section class="error-page">
+    <span class="error-code">{{ error_code }}</span>
+    <p class="eyebrow">Algo no ha salido como esperábamos</p>
+    <h1>{{ error_message }}</h1>
+    <p>Comprueba la dirección o vuelve a una sección estable de CarnetQuiz.</p>
+    <div class="hero-actions">
+        <a class="button button-primary" href="/tests/new">Volver a estudiar</a>
+        <a class="button button-secondary" href="/">Ir al inicio</a>
+    </div>
+</section>
+{% endblock %}

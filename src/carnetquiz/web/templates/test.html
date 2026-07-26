@@ -1,1 +1,36 @@
-{% extends "base.html" %}{% block content %}<p>Pregunta {{ position }} de {{ total }}</p><progress value="{{ position-1 }}" max="{{ total }}"></progress><h1>{{ question.question }}</h1><form method="post">{% for option in question.options %}<label class="option"><input type="radio" name="option" value="{{ option.id }}" required> {{ option.text }}</label>{% endfor %}<button>Responder</button></form>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Pregunta {{ position }} de {{ total }}{% endblock %}
+{% block content %}
+<section class="quiz-shell" aria-labelledby="question-title">
+    <div class="quiz-topline">
+        <div><p class="eyebrow">{{ mode_label }}</p><p class="quiz-counter">Pregunta <strong>{{ position }}</strong> de <strong>{{ total }}</strong></p></div>
+        <span class="quiz-percent">{{ ((position - 1) * 100 / total)|round|int }}% completado</span>
+    </div>
+    <div class="quiz-progress" role="progressbar" aria-label="Progreso del test" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ position - 1 }}" aria-valuetext="Pregunta {{ position }} de {{ total }}">
+        <span style="width: {{ ((position - 1) * 100 / total) }}%"></span>
+    </div>
+    <div class="quiz-question">
+        {% if question.topic %}<span class="topic-tag">{{ question.topic }}</span>{% endif %}
+        <h1 id="question-title">{{ question.question }}</h1>
+    </div>
+    <form class="answer-form" method="post" data-answer-form>
+        <fieldset>
+            <legend class="sr-only">Selecciona una respuesta</legend>
+            <div class="option-list">
+                {% for option in question.options %}
+                <label class="answer-option" for="option-{{ option.id }}">
+                    <input id="option-{{ option.id }}" type="radio" name="option" value="{{ option.id }}" required>
+                    <span class="option-letter" aria-hidden="true">{{ "ABCD"[loop.index0] }}</span>
+                    <span class="option-text">{{ option.text }}</span>
+                    <span class="option-check" aria-hidden="true">✓</span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+        <div class="quiz-submit-row">
+            <p class="keyboard-hint"><kbd>1</kbd>–<kbd>4</kbd> seleccionar · <kbd>Enter</kbd> responder</p>
+            <button class="button button-primary button-large" type="submit" data-submit-answer><span class="button-label">Responder</span><span class="button-loading" aria-hidden="true">Comprobando…</span></button>
+        </div>
+    </form>
+</section>
+{% endblock %}

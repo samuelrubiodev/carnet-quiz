@@ -5,6 +5,7 @@ import inspect
 from fastapi.testclient import TestClient
 
 from carnetquiz.mcp_server.server import build_server
+from carnetquiz.repositories.questions import get_attempt
 from carnetquiz.services.demo import create_demo
 from carnetquiz.services.selection import select_questions, shuffle_options
 from carnetquiz.web.app import create_app
@@ -37,6 +38,58 @@ def test_web_demo_test_and_result():
     response = client.post(location, data={"option":"a"})
     assert response.status_code == 200
     assert client.get(f"/results/{attempt}").status_code == 200
+
+
+def test_web_resources_empty_states_and_wrong_review_mode():
+    client = TestClient(create_app())
+    for path in ("/", "/videos", "/jobs", "/tests/new", "/statistics", "/admin/data"):
+        assert client.get(path).status_code == 200
+    assert client.get("/static/style.css").status_code == 200
+    assert client.get("/static/app.js").status_code == 200
+    missing = client.get("/missing")
+    assert missing.status_code == 404
+    assert "Ir al inicio" in missing.text
+    wrong_review = client.get("/tests/new?mode=wrong_review")
+    assert 'value="wrong_review" checked' in wrong_review.text
+
+
+def test_question_feedback_exam_and_presented_result_model():
+    create_demo()
+    app = create_app()
+    client = TestClient(app)
+    started = client.post("/tests", data={"mode": "random", "count": "1"}, follow_redirects=False)
+    location = started.headers["location"]
+    attempt_id = location.split("/")[2]
+    question_page = client.get(location)
+    question = app.state.tests[attempt_id][0]
+    option_ids = {option["id"] for option in question["options"]}
+    assert all(f'value="{option_id}"' in question_page.text for option_id in option_ids)
+    assert "00:00–00:12" not in question_page.text
+
+    wrong_option = next(option for option in question["options"] if option["id"] != question["correct_option"])
+    feedback = client.post(location, data={"option": wrong_option["id"]})
+    assert "Respuesta incorrecta" in feedback.text
+    assert "Tu respuesta" in feedback.text
+    assert "Respuesta correcta" in feedback.text
+    assert "Referencia: 00:" in feedback.text
+    assert " s–" not in feedback.text
+
+    result = client.get(f"/results/{attempt_id}")
+    assert wrong_option["text"] in result.text
+    correct_option = next(option for option in question["options"] if option["id"] == question["correct_option"])
+    assert correct_option["text"] in result.text
+    presentation = get_attempt(attempt_id)["answers"][0]
+    assert presentation["chosen_option_text"] == wrong_option["text"]
+    assert "options_json" not in presentation
+
+    exam_started = client.post("/tests", data={"mode": "exam", "count": "1"}, follow_redirects=False)
+    exam_location = exam_started.headers["location"]
+    exam_question = app.state.tests[exam_location.split("/")[2]][0]
+    exam_feedback = client.post(exam_location, data={"option": exam_question["options"][0]["id"]})
+    assert "Respuesta registrada" in exam_feedback.text
+    assert "Respuesta incorrecta" not in exam_feedback.text
+    assert "Respuesta correcta" not in exam_feedback.text
+    assert "Explicación" not in exam_feedback.text
 
 
 def test_mcp_server_builds_and_start_is_optional():

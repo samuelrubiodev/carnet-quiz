@@ -1,1 +1,47 @@
-{% extends "base.html" %}{% block content %}<h1>Trabajos</h1>{% if warning %}<p class="warning">{{ warning }}</p>{% endif %}<form method="post"><label>Vídeo <select name="video_id">{% for video in videos|default([]) %}<option value="{{ video.id }}">{{ video.title }}</option>{% endfor %}</select></label><label>Desde <input name="start" value="0s"></label><label>Hasta <input name="until" value="30m" required></label><button>Crear</button></form><table><tr><th>ID</th><th>Estado</th><th>Intervalo</th><th>Preguntas</th><th></th></tr>{% for job in jobs %}<tr><td>{{ job.id }}</td><td>{{ job.status }}</td><td>{{ job.start_seconds|duration }} – {{ job.end_seconds|duration }}</td><td>{{ job.question_count }}</td><td>{% if job.status not in ['committed','rejected'] %}<form method="post" action="/jobs/{{ job.id }}/validate"><button>Validar</button></form>{% endif %}{% if job.status in ['validated','partially_valid'] %}<form method="post" action="/jobs/{{ job.id }}/commit"><button>Importar</button></form>{% endif %}</td></tr>{% endfor %}</table>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Trabajos{% endblock %}
+{% block content %}
+<section class="page-header">
+    <div><p class="eyebrow">Procesamiento de contenido</p><h1>Trabajos</h1><p class="page-intro">Divide una transcripción en intervalos y sigue el estado de cada generación.</p></div>
+</section>
+{% if warning %}<div class="alert alert-warning" role="status"><strong>Aviso del trabajo</strong><span>{{ warning }}</span></div>{% endif %}
+{% if error %}<div class="alert alert-error" role="alert"><strong>No se ha podido crear el trabajo.</strong><span>{{ error }}</span></div>{% endif %}
+
+<section class="surface-panel" aria-labelledby="new-job-title">
+    <div class="panel-heading"><div><span class="step-label">01 · Intervalo</span><h2 id="new-job-title">Crear un trabajo</h2></div><span class="panel-icon" aria-hidden="true">⌁</span></div>
+    <form class="form-grid job-form" method="post" data-loading-form>
+        <div class="field field-span-2"><label for="job-video">Vídeo</label><select id="job-video" name="video_id" required>{% for video in videos %}<option value="{{ video.id }}" {% if form_values and form_values.video_id == video.id %}selected{% endif %}>{{ video.title }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="job-start">Desde</label><input id="job-start" name="start" value="{{ form_values.start if form_values else '0s' }}" placeholder="30m"><span class="field-help">Ej.: 30m · 1h · 01:30:00</span></div>
+        <div class="field"><label for="job-until">Hasta</label><input id="job-until" name="until" value="{{ form_values.until if form_values else '30m' }}" placeholder="1h" required><span class="field-help">Límite final incluido en formato de tiempo.</span></div>
+        <div class="form-actions field-span-2"><button class="button button-primary" type="submit"><span class="button-label">Crear trabajo</span><span class="button-loading" aria-hidden="true">Creando…</span></button></div>
+    </form>
+</section>
+
+<section class="section-block" aria-labelledby="jobs-list-title">
+    <div class="section-heading"><div><p class="eyebrow">Seguimiento</p><h2 id="jobs-list-title">Historial de trabajos</h2></div><span class="count-label">{{ jobs|length }} trabajos</span></div>
+    {% if jobs %}
+    <div class="job-list">
+        {% for job in jobs %}
+        <article class="job-card">
+            <div class="job-main">
+                <div class="job-id"><span class="job-dot" aria-hidden="true"></span><code title="{{ job.id }}">{{ job.id[-12:] }}</code></div>
+                <h3>{{ job.video_title }}</h3>
+                <p class="job-range"><span>Intervalo</span>{{ job.start_seconds|duration }} – {{ job.end_seconds|duration }}</p>
+            </div>
+            <div class="job-metrics"><span><strong>{{ job.concept_count or 0 }}</strong> conceptos</span><span><strong>{{ job.question_count or 0 }}</strong> preguntas</span></div>
+            <div class="job-status"><span class="status-pill status-{{ job.status }}">{{ job.status_label }}</span>{% if job.validation_error_count %}<span class="issue-count">{{ job.validation_error_count }} avisos</span>{% endif %}</div>
+            <div class="job-actions">
+                {% if job.status not in ['committed', 'rejected'] %}<form method="post" action="/jobs/{{ job.id }}/validate" data-loading-form><button class="button button-small button-secondary" type="submit">Validar</button></form>{% endif %}
+                {% if job.status in ['validated', 'partially_valid'] %}<form method="post" action="/jobs/{{ job.id }}/commit" data-loading-form><button class="button button-small button-primary" type="submit">Importar</button></form>{% endif %}
+            </div>
+            {% if job.validation_issues %}
+            <details class="job-issues"><summary>Ver avisos de validación</summary><ul>{% for issue in job.validation_issues %}<li><strong>{{ issue.code if issue.code else 'Aviso' }}</strong>{% if issue.message %}: {{ issue.message }}{% endif %}</li>{% endfor %}</ul></details>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><span class="empty-icon" aria-hidden="true">⌁</span><h3>Sin trabajos todavía</h3><p>Cuando tengas una transcripción, crea un intervalo para generar preguntas.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

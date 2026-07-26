@@ -1,1 +1,86 @@
-{% extends "base.html" %}{% block content %}<h1>Resultados</h1><p>{{ attempt.correct_count }} aciertos, {{ attempt.wrong_count }} fallos de {{ attempt.question_count }}.</p><ul>{% for answer in attempt.answers %}<li><b>{{ answer.question }}</b> — {% if answer.is_correct %}correcta{% else %}fallada{% endif %}<br>{{ answer.explanation }}</li>{% endfor %}</ul>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Resultados{% endblock %}
+{% block content %}
+<section class="results-header">
+    <div>
+        <p class="eyebrow">Sesión completada</p>
+        <h1>Resultados del test</h1>
+        <p class="page-intro">Aquí tienes una lectura clara de tus respuestas. Repasa los fallos para consolidar lo aprendido.</p>
+    </div>
+    <div class="results-actions">
+        <a class="button button-primary" href="/tests/new">Crear otro test</a>
+        {% if attempt.wrong_count %}<a class="button button-secondary" href="/tests/new?mode=wrong_review">Repasar preguntas falladas</a>{% endif %}
+    </div>
+</section>
+
+<section class="results-overview" aria-labelledby="score-title">
+    <div class="score-ring" style="--score: {{ attempt.percentage }}%">
+        <div><strong>{{ attempt.percentage }}%</strong><span>precisión</span></div>
+    </div>
+    <div class="score-copy">
+        <p class="eyebrow">Puntuación</p>
+        <h2 id="score-title">{{ attempt.result_state }}</h2>
+        <p>{{ attempt.correct_count }} aciertos de {{ attempt.question_count }} preguntas.</p>
+        <div class="score-progress"><span style="width: {{ attempt.percentage }}%"></span></div>
+    </div>
+    <div class="score-stats">
+        <div><strong>{{ attempt.correct_count }}</strong><span>Aciertos</span></div>
+        <div><strong>{{ attempt.wrong_count }}</strong><span>Fallos</span></div>
+        <div><strong>{{ attempt.question_count }}</strong><span>Preguntas</span></div>
+    </div>
+</section>
+
+<section class="section-block results-review" aria-labelledby="review-title">
+    <div class="section-heading">
+        <div><p class="eyebrow">Revisión de respuestas</p><h2 id="review-title">Qué has respondido</h2></div>
+        <div class="filter-group" role="group" aria-label="Filtrar respuestas">
+            <button class="filter-button is-active" type="button" data-result-filter="all" aria-pressed="true">Todas <span>{{ attempt.answers|length }}</span></button>
+            <button class="filter-button" type="button" data-result-filter="wrong" aria-pressed="false">Falladas <span>{{ attempt.wrong_count }}</span></button>
+            <button class="filter-button" type="button" data-result-filter="correct" aria-pressed="false">Correctas <span>{{ attempt.correct_count }}</span></button>
+        </div>
+    </div>
+    {% if attempt.answers %}
+    <div class="review-list">
+        {% for answer in attempt.answers %}
+        <details class="review-card {% if answer.is_correct %}review-correct{% else %}review-wrong{% endif %}" data-result-card="{% if answer.is_correct %}correct{% else %}wrong{% endif %}" {% if not answer.is_correct %}open{% endif %}>
+            <summary>
+                <span class="review-number">{{ "%02d"|format(answer.position) }}</span>
+                <span class="review-summary-text">{{ answer.question }}</span>
+                <span class="review-state">
+                    {% if answer.is_correct %}<span class="state-icon state-icon-correct" aria-hidden="true">✓</span>Correcta{% else %}<span class="state-icon state-icon-wrong" aria-hidden="true">!</span>Fallada{% endif %}
+                </span>
+                <span class="summary-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div class="review-content">
+                <div class="review-answer-grid">
+                    <div>
+                        <span class="review-label">Tu respuesta</span>
+                        <p class="{% if not answer.is_correct %}answer-wrong{% endif %}">{{ answer.chosen_option_text }}</p>
+                    </div>
+                    <div>
+                        <span class="review-label">Respuesta correcta</span>
+                        <p class="answer-correct">{{ answer.correct_option_text }}</p>
+                    </div>
+                </div>
+                <div class="review-explanation">
+                    <span class="review-label">Explicación</span>
+                    <p>{{ answer.explanation }}</p>
+                </div>
+                <div class="review-meta">
+                    <span class="topic-tag">{{ answer.topic }}</span>
+                    <span>Referencia: {{ answer.source_start|timestamp }}–{{ answer.source_end|timestamp }}</span>
+                    {% if answer.fragment_url %}<a class="text-link" href="{{ answer.fragment_url }}" target="_blank" rel="noopener noreferrer">Ver fragmento ↗</a>{% endif %}
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">◌</span>
+        <h3>Sin respuestas para revisar</h3>
+        <p>Completa un test para construir tu historial de aprendizaje.</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

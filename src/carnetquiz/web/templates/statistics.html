@@ -1,1 +1,112 @@
-{% extends "base.html" %}{% block content %}<h1>Estadísticas</h1><p>{{ stats.total }} preguntas; {{ stats.shown }} apariciones; {{ stats.correct }} aciertos; {{ stats.wrong }} fallos.</p><h2>Por tema</h2><ul>{% for topic in stats.topics %}<li>{{ topic.topic }}: {{ topic.questions }} preguntas, {{ topic.wrong or 0 }} fallos</li>{% endfor %}</ul>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Estadísticas{% endblock %}
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Progreso medible</p>
+        <h1>Estadísticas</h1>
+        <p class="page-intro">Entiende qué dominas y dónde conviene concentrar tu próximo repaso.</p>
+    </div>
+</section>
+
+<section class="stat-grid stats-grid-wide" aria-label="Resumen de estadísticas">
+    <article class="stat-card">
+        <span class="stat-icon stat-icon-indigo" aria-hidden="true">?</span>
+        <span class="stat-label">Preguntas disponibles</span>
+        <strong>{{ stats.total }}</strong>
+        <span class="stat-note">En la biblioteca</span>
+    </article>
+    <article class="stat-card">
+        <span class="stat-icon stat-icon-blue" aria-hidden="true">◷</span>
+        <span class="stat-label">Preguntas respondidas</span>
+        <strong>{{ stats.answered }}</strong>
+        <span class="stat-note">A través de tests</span>
+    </article>
+    <article class="stat-card">
+        <span class="stat-icon stat-icon-green" aria-hidden="true">✓</span>
+        <span class="stat-label">Aciertos</span>
+        <strong>{{ stats.correct }}</strong>
+        <span class="stat-note">Respuestas correctas</span>
+    </article>
+    <article class="stat-card">
+        <span class="stat-icon stat-icon-amber" aria-hidden="true">↺</span>
+        <span class="stat-label">Precisión</span>
+        <strong>{% if stats.answered %}{{ stats.accuracy }}%{% else %}—{% endif %}</strong>
+        <span class="stat-note">{% if stats.answered %}Rendimiento global{% else %}Sin datos todavía{% endif %}</span>
+    </article>
+</section>
+
+<div class="stats-columns">
+    <section class="surface-panel" aria-labelledby="topics-title">
+        <div class="section-heading">
+            <div><p class="eyebrow">Distribución</p><h2 id="topics-title">Rendimiento por tema</h2></div>
+        </div>
+        {% if stats.topics %}
+        <div class="topic-list">
+            {% for topic in stats.topics %}
+            <div class="topic-row">
+                <div class="topic-row-heading"><strong>{{ topic.topic }}</strong><span>{{ topic.accuracy }}% · {{ topic.answered }} respuestas</span></div>
+                <div class="topic-bar" aria-label="{{ topic.accuracy }}% de aciertos en {{ topic.topic }}"><span style="width: {{ topic.accuracy }}%"></span></div>
+                <div class="topic-row-foot"><span>{{ topic.correct }} aciertos</span><span>{{ topic.wrong or 0 }} fallos</span></div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state empty-state-small">
+            <span class="empty-icon" aria-hidden="true">◌</span>
+            <h3>Sin temas todavía</h3>
+            <p>Los temas aparecerán cuando haya preguntas validadas.</p>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="surface-panel" aria-labelledby="weak-title">
+        <div class="section-heading">
+            <div><p class="eyebrow">Prioridad de repaso</p><h2 id="weak-title">Más fallos</h2></div>
+        </div>
+        {% if stats.topics and stats.wrong %}
+        <ol class="weak-list">
+            {% for topic in stats.topics if topic.wrong %}
+            <li>
+                <span class="weak-rank">{{ loop.index }}</span>
+                <span class="weak-copy"><strong>{{ topic.topic }}</strong><span>{{ topic.wrong }} fallos · {{ topic.accuracy }}% de aciertos</span></span>
+                <span class="weak-bar"><span style="width: {{ [topic.wrong * 12, 100]|min }}%"></span></span>
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <div class="empty-state empty-state-small">
+            <span class="empty-icon" aria-hidden="true">✓</span>
+            <h3>Sin fallos registrados</h3>
+            <p>Cuando practiques, aquí verás qué temas necesitan más atención.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<section class="section-block" aria-labelledby="stats-recent-title">
+    <div class="section-heading">
+        <div><p class="eyebrow">Historial</p><h2 id="stats-recent-title">Tests recientes</h2></div>
+    </div>
+    {% if stats.recent_attempts %}
+    <div class="recent-list">
+        {% for attempt in stats.recent_attempts %}
+        <a class="recent-item" href="/results/{{ attempt.id }}">
+            <span class="recent-date">{{ attempt.created_at|date_es }}</span>
+            <span class="recent-mode">{{ attempt.selection_mode|replace('_', ' ')|capitalize }}</span>
+            <span class="recent-score"><strong>{{ attempt.correct_count }}/{{ attempt.question_count }}</strong><span>{{ attempt.percentage }}%</span></span>
+            <span class="status-pill status-{{ attempt.result_tone }}">{{ attempt.result_state }}</span>
+            <span class="recent-arrow" aria-hidden="true">→</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">✦</span>
+        <h3>Sin tests recientes</h3>
+        <p>Completa tu primera sesión para empezar a ver tendencias.</p>
+        <a class="button button-primary" href="/tests/new">Crear test</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

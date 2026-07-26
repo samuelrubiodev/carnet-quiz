@@ -1,1 +1,38 @@
-{% extends "base.html" %}{% block content %}<h1>{{ video.title }}</h1><form><input name="search" placeholder="Buscar texto"><button>Buscar</button></form><ol>{% for segment in segments %}<li id="s{{ segment.id }}"><a href="{{ video.url }}&t={{ segment.start_seconds|int }}s" target="_blank">{{ "%.1f"|format(segment.start_seconds) }}–{{ "%.1f"|format(segment.end_seconds) }}</a> {{ segment.text }}</li>{% else %}<li>Sin segmentos.</li>{% endfor %}</ol>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Transcripción · {{ video.title }}{% endblock %}
+{% block content %}
+<section class="page-header page-header-compact">
+    <div>
+        <a class="back-link" href="/videos">← Vídeos</a>
+        <p class="eyebrow">Transcripción</p>
+        <h1>{{ video.title }}</h1>
+        <p class="page-intro">{{ video.channel or "Canal no disponible" }} · {{ video.duration_seconds|duration if video.duration_seconds is not none else "Duración no disponible" }}</p>
+    </div>
+    <a class="button button-secondary" href="{{ video.url }}" target="_blank" rel="noopener noreferrer">Abrir en YouTube <span aria-hidden="true">↗</span></a>
+</section>
+
+<section class="surface-panel transcript-panel" aria-labelledby="transcript-title">
+    <div class="section-heading">
+        <div><p class="eyebrow">Fuente original</p><h2 id="transcript-title">Segmentos de transcripción</h2></div>
+        <span class="count-label">{{ segments|length }} segmentos</span>
+    </div>
+    <form class="search-form" method="get">
+        <label class="sr-only" for="transcript-search">Buscar en la transcripción</label>
+        <input id="transcript-search" type="search" name="search" value="{{ search }}" placeholder="Buscar una palabra o concepto">
+        <button class="button button-secondary" type="submit">Buscar</button>
+        {% if search %}<a class="text-link" href="/videos/{{ video.id }}/transcript">Limpiar</a>{% endif %}
+    </form>
+    {% if segments %}
+    <ol class="transcript-list">
+        {% for segment in segments %}
+        <li id="s{{ segment.id }}" class="transcript-item">
+            <a class="timestamp" href="{{ video.url }}{% if '?' in video.url %}&{% else %}?{% endif %}t={{ segment.start_seconds|int }}s" target="_blank" rel="noopener noreferrer">{{ segment.start_seconds|timestamp }}–{{ segment.end_seconds|timestamp }} <span aria-hidden="true">↗</span></a>
+            <p>{{ segment.text }}</p>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <div class="empty-state"><span class="empty-icon" aria-hidden="true">◌</span><h3>Sin transcripción</h3><p>{% if search %}No hay segmentos que coincidan con «{{ search }}».{% else %}Este vídeo todavía no tiene segmentos disponibles.{% endif %}</p></div>
+    {% endif %}
+</section>
+{% endblock %}

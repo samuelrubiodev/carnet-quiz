@@ -1,12 +1,170 @@
-{% extends "base.html" %}{% block content %}<h1>Administración de datos</h1>
-<p>Estas operaciones son irreversibles sin una copia de seguridad.</p>
-<section class="cards">
-{% for key, label in [("videos", "vídeos"), ("transcript_segments", "segmentos"), ("jobs", "trabajos"), ("concepts", "conceptos"), ("questions", "preguntas"), ("attempts", "intentos"), ("answers", "respuestas")] %}<article><b>{{ counts[key] }}</b><span>{{ label }}</span></article>{% endfor %}
+{% extends "base.html" %}
+{% block title %}Administración de datos{% endblock %}
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Control y seguridad</p>
+        <h1>Administración de datos</h1>
+        <p class="page-intro">Consulta el estado de tu biblioteca y ejecuta operaciones protegidas sobre los datos locales.</p>
+    </div>
 </section>
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
-<section class="danger-zone"><h2>Borrado selectivo</h2>
-<form method="post" action="/admin/data/preview"><label>Recurso <select name="resource"><option>video</option><option>transcript</option><option>job</option><option>concept</option><option>question</option><option>attempt</option></select></label><label>Identificador <input name="identifier" required></label><label><input type="checkbox" name="cascade" value="true"> Cascada (solo transcripción)</label><button type="submit">Previsualizar borrado</button></form>
-{% if plan %}<h3>Plan: {{ plan.resource }} {{ plan.identifier }}</h3><ul>{% for key, value in plan.counts.items() %}{% if value %}<li>{{ key }}: {{ value }}</li>{% endif %}{% endfor %}</ul>{% if plan.file_paths %}<h4>Archivos y directorios</h4><ul>{% for path in plan.file_paths %}<li><code>{{ path }}</code></li>{% endfor %}</ul>{% endif %}{% if plan.blocked %}<p class="error">Borrado bloqueado por dependencias. Detectadas: {{ plan.affected_counts.jobs }} trabajos, {{ plan.affected_counts.concepts }} conceptos, {{ plan.affected_counts.questions }} preguntas. Activá cascada.</p>{% else %}<form method="post" action="/admin/data/delete"><input type="hidden" name="resource" value="{{ plan.resource }}"><input type="hidden" name="identifier" value="{{ plan.identifier }}"><input type="hidden" name="cascade" value="{{ 'true' if plan.cascade else 'false' }}"><label>Escribí DELETE: <input name="confirm" required></label><button class="danger" type="submit">Borrar definitivamente</button></form>{% endif %}{% endif %}
+
+<div class="alert alert-warning" role="note">
+    <strong>Zona sensible.</strong>
+    <span>Los borrados son irreversibles. Se crea una copia de seguridad antes de modificar la base de datos.</span>
+</div>
+{% if error %}
+<div class="alert alert-error" role="alert">
+    <strong>La operación necesita atención.</strong>
+    <span>{{ error }}</span>
+</div>
+{% endif %}
+
+<section class="stat-grid data-count-grid" aria-label="Conteo de datos">
+    {% for key, label in [("videos", "Vídeos"), ("transcript_segments", "Segmentos"), ("jobs", "Trabajos"), ("concepts", "Conceptos"), ("questions", "Preguntas"), ("attempts", "Intentos"), ("answers", "Respuestas")] %}
+    <article class="stat-card stat-card-compact">
+        <span class="stat-label">{{ label }}</span>
+        <strong>{{ counts[key] }}</strong>
+    </article>
+    {% endfor %}
 </section>
-<section class="danger-zone"><h2>Reseteo total</h2><p>Vacía vídeos, transcripciones, trabajos, preguntas, intentos y respuestas. Conserva esquema, código y copias de seguridad.</p><form method="post" action="/admin/data/preview-reset"><button type="submit">Previsualizar reseteo</button></form>{% if reset_plan %}<h3>Plan de reseteo</h3><ul>{% for key, value in reset_plan.counts.items() %}{% if value %}<li>{{ key }}: {{ value }}</li>{% endif %}{% endfor %}</ul>{% if reset_plan.file_paths %}<h4>Archivos y directorios</h4><ul>{% for path in reset_plan.file_paths %}<li><code>{{ path }}</code></li>{% endfor %}</ul>{% endif %}<form method="post" action="/admin/data/reset"><label>Escribí RESET CARNETQUIZ: <input name="confirm" required></label><button class="danger" type="submit">Resetear definitivamente</button></form>{% endif %}</section>
-{% if result %}<section><h2>Resultado</h2><p>{% if result.cleanup_complete %}Operación completada. Integridad SQLite correcta.{% else %}SQLite actualizado; limpieza de archivos incompleta.{% endif %}</p>{% if result.backup_path %}<p>Copia de seguridad: <code>{{ result.backup_path }}</code></p>{% endif %}<pre>{{ result | tojson(indent=2) }}</pre></section>{% endif %}{% endblock %}
+
+<section class="danger-zone" aria-labelledby="selective-title">
+    <div class="danger-heading">
+        <div>
+            <p class="eyebrow">Operación protegida</p>
+            <h2 id="selective-title">Borrado selectivo</h2>
+            <p>Previsualiza dependencias antes de confirmar. La cascada solo se activa de forma explícita.</p>
+        </div>
+        <span class="danger-icon" aria-hidden="true">!</span>
+    </div>
+    <form class="form-grid" method="post" action="/admin/data/preview" data-loading-form>
+        <div class="field">
+            <label for="delete-resource">Recurso</label>
+            <select id="delete-resource" name="resource">
+                <option value="video">Vídeo</option>
+                <option value="transcript">Transcripción</option>
+                <option value="job">Trabajo</option>
+                <option value="concept">Concepto</option>
+                <option value="question">Pregunta</option>
+                <option value="attempt">Intento</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="delete-identifier">Identificador</label>
+            <input id="delete-identifier" name="identifier" required>
+        </div>
+        <label class="check-row field-span-2">
+            <input type="checkbox" name="cascade" value="true">
+            <span class="check-mark" aria-hidden="true">✓</span>
+            <span>
+                <strong>Permitir cascada</strong>
+                <small>Necesaria para eliminar una transcripción con sus trabajos dependientes.</small>
+            </span>
+        </label>
+        <div class="form-actions field-span-2">
+            <button class="button button-danger-outline" type="submit">
+                <span class="button-label">Previsualizar borrado</span>
+                <span class="button-loading" aria-hidden="true">Calculando…</span>
+            </button>
+        </div>
+    </form>
+
+    {% if plan %}
+    <div class="plan-panel">
+        <h3>Plan para {{ plan.resource }} <code>{{ plan.identifier }}</code></h3>
+        <div class="plan-grid">
+            {% for key, value in plan.counts.items() %}
+                {% if value %}
+                <div><strong>{{ value }}</strong><span>{{ key }}</span></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if plan.file_paths %}
+        <h4>Rutas afectadas</h4>
+        <ul class="path-list">
+            {% for path in plan.file_paths %}<li><code>{{ path }}</code></li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% if plan.blocked %}
+        <div class="alert alert-error">
+            <strong>Borrado bloqueado por dependencias.</strong>
+            <span>{{ plan.affected_counts.jobs }} trabajos, {{ plan.affected_counts.concepts }} conceptos y {{ plan.affected_counts.questions }} preguntas afectadas. Activa la cascada si procede.</span>
+        </div>
+        {% else %}
+        <form class="confirmation-form" method="post" action="/admin/data/delete" data-loading-form>
+            <input type="hidden" name="resource" value="{{ plan.resource }}">
+            <input type="hidden" name="identifier" value="{{ plan.identifier }}">
+            <input type="hidden" name="cascade" value="{{ 'true' if plan.cascade else 'false' }}">
+            <div class="field">
+                <label for="delete-confirm">Escribe DELETE para confirmar</label>
+                <input id="delete-confirm" name="confirm" required autocomplete="off">
+            </div>
+            <button class="button button-danger" type="submit">
+                <span class="button-label">Borrar definitivamente</span>
+                <span class="button-loading" aria-hidden="true">Borrando…</span>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<section class="danger-zone danger-zone-reset" aria-labelledby="reset-title">
+    <div class="danger-heading">
+        <div>
+            <p class="eyebrow">Operación total</p>
+            <h2 id="reset-title">Reseteo total</h2>
+            <p>Vacía vídeos, transcripciones, trabajos, preguntas, intentos y respuestas. Conserva esquema, código y copias de seguridad.</p>
+        </div>
+        <span class="danger-icon" aria-hidden="true">⌫</span>
+    </div>
+    <form method="post" action="/admin/data/preview-reset" data-loading-form>
+        <button class="button button-danger-outline" type="submit">
+            <span class="button-label">Previsualizar reseteo</span>
+            <span class="button-loading" aria-hidden="true">Calculando…</span>
+        </button>
+    </form>
+    {% if reset_plan %}
+    <div class="plan-panel">
+        <h3>Plan de reseteo</h3>
+        <div class="plan-grid">
+            {% for key, value in reset_plan.counts.items() %}
+                {% if value %}
+                <div><strong>{{ value }}</strong><span>{{ key }}</span></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if reset_plan.file_paths %}
+        <h4>Rutas afectadas</h4>
+        <ul class="path-list">
+            {% for path in reset_plan.file_paths %}<li><code>{{ path }}</code></li>{% endfor %}
+        </ul>
+        {% endif %}
+        <form class="confirmation-form" method="post" action="/admin/data/reset" data-loading-form>
+            <div class="field">
+                <label for="reset-confirm">Escribe RESET CARNETQUIZ para confirmar</label>
+                <input id="reset-confirm" name="confirm" required autocomplete="off">
+            </div>
+            <button class="button button-danger" type="submit">
+                <span class="button-label">Reinicia todos los datos</span>
+                <span class="button-loading" aria-hidden="true">Reseteando…</span>
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</section>
+
+{% if result %}
+<section class="surface-panel operation-result" aria-labelledby="result-title">
+    <p class="eyebrow">Resultado</p>
+    <h2 id="result-title">Operación completada</h2>
+    <p>{% if result.cleanup_complete %}SQLite actualizado y limpieza de archivos completada.{% else %}SQLite actualizado; la limpieza de archivos necesita revisión.{% endif %}</p>
+    {% if result.backup_path %}<p>Copia de seguridad: <code>{{ result.backup_path }}</code></p>{% endif %}
+    <details>
+        <summary>Ver informe técnico</summary>
+        <pre>{{ result | tojson(indent=2) }}</pre>
+    </details>
+</section>
+{% endif %}
+{% endblock %}

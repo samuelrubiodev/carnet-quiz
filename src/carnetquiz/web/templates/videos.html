@@ -1,1 +1,59 @@
-{% extends "base.html" %}{% block content %}<h1>Vídeos</h1><form method="post"><label>URL YouTube <input name="url" required></label><button>Añadir vídeo</button></form><table><tr><th>Título</th><th>Duración</th><th>Estado</th><th></th></tr>{% for video in videos %}<tr><td>{{ video.title }}</td><td>{{ video.duration_seconds or "?" }} s</td><td>{{ video.status }}</td><td><a href="/videos/{{ video.id }}/transcript">Transcripción</a></td></tr>{% else %}<tr><td colspan="4">No hay vídeos.</td></tr>{% endfor %}</table>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Vídeos{% endblock %}
+{% block content %}
+<section class="page-header">
+    <div>
+        <p class="eyebrow">Biblioteca de estudio</p>
+        <h1>Vídeos</h1>
+        <p class="page-intro">Añade vídeos de YouTube para convertir sus transcripciones en material de práctica.</p>
+    </div>
+</section>
+
+{% if error %}<div class="alert alert-error" role="alert"><strong>No se ha podido añadir el vídeo.</strong><span>{{ error }}</span></div>{% endif %}
+
+<section class="surface-panel add-panel" aria-labelledby="add-video-title">
+    <div class="panel-heading">
+        <div>
+            <span class="step-label">01 · Biblioteca</span>
+            <h2 id="add-video-title">Añade un vídeo</h2>
+        </div>
+        <span class="panel-icon" aria-hidden="true">＋</span>
+    </div>
+    <form class="inline-form" method="post" data-loading-form>
+        <div class="field field-grow">
+            <label for="video-url">URL de YouTube</label>
+            <input id="video-url" name="url" type="url" placeholder="https://www.youtube.com/watch?v=..." required>
+            <span class="field-help">Admite enlaces de vídeos de YouTube. La transcripción se obtiene después.</span>
+        </div>
+        <button class="button button-primary" type="submit"><span class="button-label">Añadir vídeo</span><span class="button-loading" aria-hidden="true">Añadiendo…</span></button>
+    </form>
+</section>
+
+<section class="section-block" aria-labelledby="video-list-title">
+    <div class="section-heading">
+        <div><p class="eyebrow">Contenido disponible</p><h2 id="video-list-title">Tu biblioteca</h2></div>
+        <span class="count-label">{{ videos|length }} vídeos</span>
+    </div>
+    {% if videos %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <caption class="sr-only">Vídeos incorporados</caption>
+            <thead><tr><th scope="col">Vídeo</th><th scope="col">Duración</th><th scope="col">Estado</th><th scope="col">Procesado</th><th scope="col"><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+            {% for video in videos %}
+            <tr>
+                <td data-label="Vídeo"><div class="video-cell"><span class="video-thumb" aria-hidden="true">▶</span><div><strong>{{ video.title }}</strong><span>{{ video.channel or "Canal no disponible" }}</span></div></div></td>
+                <td data-label="Duración">{{ video.duration_seconds|duration if video.duration_seconds is not none else "Sin duración" }}</td>
+                <td data-label="Estado"><span class="status-pill status-neutral">{{ video.status|replace('_', ' ')|capitalize }}</span></td>
+                <td data-label="Procesado"><div class="progress-cell"><div class="progress-track"><span style="width: {{ video.progress_percent }}%"></span></div><span>{{ video.progress_percent }}% · {{ video.question_count }} preguntas</span></div></td>
+                <td data-label="Acciones"><a class="button button-small button-secondary" href="/videos/{{ video.id }}/transcript">Ver transcripción</a></td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><span class="empty-icon" aria-hidden="true">◌</span><h3>Aún no hay vídeos</h3><p>Añade tu primer vídeo arriba para empezar a crear preguntas.</p></div>
+    {% endif %}
+</section>
+{% endblock %}

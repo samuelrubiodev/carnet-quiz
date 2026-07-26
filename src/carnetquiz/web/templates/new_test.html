@@ -1,1 +1,54 @@
-{% extends "base.html" %}{% block content %}<h1>Crear test</h1><form method="post" action="/tests"><label>Modo <select name="mode"><option value="random">Aleatorio</option><option value="balanced">Equilibrado</option><option value="new">Nuevas</option><option value="wrong_review">Repaso de fallos</option><option value="smart">Repaso inteligente</option><option value="exam">Examen</option></select></label><label>Preguntas <input type="number" name="count" min="1" max="100" value="10"></label><label>Desde <input name="start" placeholder="0m"></label><label>Hasta <input name="until" placeholder="60m"></label><fieldset><legend>Vídeos</legend>{% for video in videos %}<label><input type="checkbox" name="video_ids" value="{{ video.id }}">{{ video.title }}</label>{% endfor %}</fieldset><button>Empezar</button></form>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Crear test{% endblock %}
+{% block content %}
+<section class="page-header">
+    <div><p class="eyebrow">Sesión de estudio</p><h1>Crear test</h1><p class="page-intro">Configura una sesión a tu ritmo. Puedes cambiar la selección antes de comenzar.</p></div>
+</section>
+{% if error %}<div class="alert alert-error" role="alert"><strong>No se puede comenzar el test.</strong><span>{{ error }}</span></div>{% endif %}
+
+<form class="test-builder" method="post" action="/tests" data-test-builder data-loading-form>
+    <section class="surface-panel builder-section" aria-labelledby="mode-title">
+        <div class="builder-heading"><span class="builder-number">01</span><div><h2 id="mode-title">Elige el modo</h2><p>Selecciona cómo quieres practicar.</p></div></div>
+        <fieldset class="mode-grid">
+            <legend class="sr-only">Modo de estudio</legend>
+            {% for mode, label in modes.items() %}
+            <label class="mode-card {% if selected_mode == mode %}is-selected{% endif %}">
+                <input type="radio" name="mode" value="{{ mode }}" {% if selected_mode == mode %}checked{% endif %}>
+                <span class="mode-card-body"><strong>{{ label }}</strong><span>{% if mode == 'random' %}Una mezcla variada de preguntas.{% elif mode == 'balanced' %}Reparte la sesión entre temas.{% elif mode == 'new' %}Prioriza preguntas que aún no has visto.{% elif mode == 'wrong_review' %}Vuelve a preguntas que has fallado.{% elif mode == 'smart' %}Adapta la selección a tu progreso.{% else %}Practica como en una prueba completa.{% endif %}</span></span>
+                <span class="radio-mark" aria-hidden="true"></span>
+            </label>
+            {% endfor %}
+        </fieldset>
+    </section>
+
+    <div class="builder-columns">
+        <section class="surface-panel builder-section" aria-labelledby="amount-title">
+            <div class="builder-heading"><span class="builder-number">02</span><div><h2 id="amount-title">Cantidad e intervalo</h2><p>Deja el intervalo vacío para usar todo el contenido disponible.</p></div></div>
+            <div class="form-grid">
+                <div class="field"><label for="question-count">Número de preguntas</label><input id="question-count" type="number" name="count" min="1" max="100" value="{{ selected_count|default(10) }}" required></div>
+                <div class="field"><label for="test-start">Desde</label><input id="test-start" name="start" value="{{ selected_start|default('') }}" placeholder="00:30:00"><span class="field-help">Ej.: 30m</span></div>
+                <div class="field"><label for="test-until">Hasta</label><input id="test-until" name="until" value="{{ selected_until|default('') }}" placeholder="01:00:00"><span class="field-help">Ej.: 1h</span></div>
+            </div>
+        </section>
+
+        <section class="surface-panel builder-section" aria-labelledby="videos-title">
+            <div class="builder-heading"><span class="builder-number">03</span><div><h2 id="videos-title">Selecciona vídeos</h2><p>Elige una biblioteca o usa todas.</p></div></div>
+            {% if videos %}
+            <div class="selection-actions"><button class="text-button" type="button" data-select-all>Seleccionar todos</button><span aria-hidden="true">·</span><button class="text-button" type="button" data-select-none>Deseleccionar todos</button></div>
+            <fieldset class="video-selection"><legend class="sr-only">Vídeos incluidos</legend>
+                {% for video in videos %}
+                <label class="video-choice"><input type="checkbox" name="video_ids" value="{{ video.id }}" checked><span class="check-mark" aria-hidden="true">✓</span><span class="video-choice-copy"><strong>{{ video.title }}</strong><span>{{ video.progress_percent }}% procesado · {{ video.question_count }} preguntas disponibles</span></span></label>
+                {% endfor %}
+            </fieldset>
+            {% else %}
+            <div class="empty-state empty-state-small"><span class="empty-icon" aria-hidden="true">◌</span><h3>No hay vídeos disponibles</h3><p>Añade un vídeo antes de crear un test.</p><a class="text-link" href="/videos">Ir a vídeos →</a></div>
+            {% endif %}
+        </section>
+    </div>
+
+    <section class="test-summary" aria-labelledby="summary-title">
+        <div><p class="eyebrow">Resumen</p><h2 id="summary-title">Tu sesión está lista</h2><p class="summary-line"><strong data-summary-count>{{ selected_count|default(10) }}</strong> preguntas <span aria-hidden="true">·</span> <strong data-summary-mode>{{ modes[selected_mode] }}</strong> <span aria-hidden="true">·</span> <strong data-summary-videos>{{ videos|length }}</strong> vídeos <span aria-hidden="true">·</span> <span data-summary-range>Todo el contenido</span></p></div>
+        <button class="button button-primary button-large" type="submit" {% if not videos %}disabled{% endif %}><span class="button-label">Comenzar test</span><span class="button-loading" aria-hidden="true">Preparando…</span></button>
+    </section>
+</form>
+{% endblock %}
