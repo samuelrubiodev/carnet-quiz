@@ -12,21 +12,27 @@
 <section class="stat-grid stats-grid-wide" aria-label="Resumen de estadísticas">
     <article class="stat-card">
         <span class="stat-icon stat-icon-indigo" aria-hidden="true">?</span>
-        <span class="stat-label">Preguntas disponibles</span>
+        <span class="stat-label">Preguntas en biblioteca</span>
         <strong>{{ stats.total }}</strong>
-        <span class="stat-note">En la biblioteca</span>
+        <span class="stat-note">Total disponible para practicar</span>
     </article>
     <article class="stat-card">
-        <span class="stat-icon stat-icon-blue" aria-hidden="true">◷</span>
-        <span class="stat-label">Preguntas respondidas</span>
-        <strong>{{ stats.answered }}</strong>
-        <span class="stat-note">A través de tests</span>
+        <span class="stat-icon stat-icon-amber" aria-hidden="true">◷</span>
+        <span class="stat-label">Preguntas restantes</span>
+        <strong>{{ stats.remaining }}</strong>
+        <span class="stat-note">Aún no respondidas</span>
+    </article>
+    <article class="stat-card">
+        <span class="stat-icon stat-icon-blue" aria-hidden="true">◎</span>
+        <span class="stat-label">Preguntas vistas</span>
+        <strong>{{ stats.seen }}</strong>
+        <span class="stat-note">Únicas, al menos una vez</span>
     </article>
     <article class="stat-card">
         <span class="stat-icon stat-icon-green" aria-hidden="true">✓</span>
         <span class="stat-label">Aciertos</span>
         <strong>{{ stats.correct }}</strong>
-        <span class="stat-note">Respuestas correctas</span>
+        <span class="stat-note">De {{ stats.answered }} respuestas</span>
     </article>
     <article class="stat-card">
         <span class="stat-icon stat-icon-amber" aria-hidden="true">↺</span>

@@ -31,6 +31,7 @@ def select_questions(
     include_mastered: bool = True,
     start: str | int | float | None = None,
     until: str | int | float | None = None,
+    repeat_answered: bool = False,
 ) -> list[dict[str, object]]:
     if count < 1: raise ValueError("Cantidad debe ser positiva")
     start_seconds = parse_duration(start) if start is not None else (0.0 if until is not None else None)
@@ -56,7 +57,8 @@ def select_questions(
         return selected
     if mode == "new":
         fresh = [item for item in items if not int(item["shown_count"])]
-        pool = fresh or items; return list(rng.sample(pool, min(count, len(pool))))
+        pool = fresh if fresh else (items if repeat_answered else [])
+        return list(rng.sample(pool, min(count, len(pool))))
     if mode == "wrong_review":
         failed = [item for item in items if int(item["wrong_count"])]
         pool = failed or items; return list(rng.sample(pool, min(count, len(pool))))

@@ -115,9 +115,12 @@ def _dashboard_view(video_count: int) -> dict[str, object]:
 def _video_views() -> list[dict[str, object]]:
     available_questions = list_questions()
     question_counts: dict[str, int] = {}
+    remaining_question_counts: dict[str, int] = {}
     for question in available_questions:
         video_id = str(question["video_id"])
         question_counts[video_id] = question_counts.get(video_id, 0) + 1
+        if not int(question["shown_count"]):
+            remaining_question_counts[video_id] = remaining_question_counts.get(video_id, 0) + 1
 
     result = []
     for source in video_service.list_videos():
@@ -125,7 +128,9 @@ def _video_views() -> list[dict[str, object]]:
         duration = float(video.get("duration_seconds") or 0)
         processed = min(duration, max(0.0, float(video.get("last_processed_seconds") or 0))) if duration else 0
         video["progress_percent"] = round(processed * 100 / duration) if duration else 0
-        video["question_count"] = question_counts.get(str(video["id"]), 0)
+        video_id = str(video["id"])
+        video["question_count"] = question_counts.get(video_id, 0)
+        video["remaining_question_count"] = remaining_question_counts.get(video_id, 0)
         result.append(video)
     return result
 
@@ -148,13 +153,20 @@ def _job_views() -> list[dict[str, object]]:
     return result
 
 
-def _new_test_context(mode: str = "random", error: str | None = None) -> dict[str, object]:
+def _new_test_context(
+    mode: str = "random",
+    error: str | None = None,
+    selected_video_ids: list[str] | None = None,
+    new_questions_exhausted: bool = False,
+) -> dict[str, object]:
     selected_mode = mode if mode in MODE_LABELS else "random"
     return {
         "videos": _video_views(),
         "modes": MODE_LABELS,
         "selected_mode": selected_mode,
         "selected_count": 10,
+        "selected_video_ids": selected_video_ids,
+        "new_questions_exhausted": new_questions_exhausted,
         "error": error,
     }
 
@@ -290,8 +302,10 @@ def create_app() -> FastAPI:
         video_ids: list[str] = Form(default=[]),
         start: str | None = Form(None),
         until: str | None = Form(None),
+        repeat_answered: bool = Form(False),
     ) -> Response:
         chosen_videos = list(video_ids or [])
+        new_questions_exhausted = False
         try:
             questions = select_questions(
                 mode,
@@ -299,11 +313,32 @@ def create_app() -> FastAPI:
                 chosen_videos or None,
                 start=start or None,
                 until=until or None,
+                repeat_answered=repeat_answered,
             )
             if not questions:
+                if mode == "new" and not repeat_answered:
+                    answered_questions = select_questions(
+                        mode,
+                        1,
+                        chosen_videos or None,
+                        start=start or None,
+                        until=until or None,
+                        repeat_answered=True,
+                    )
+                    if answered_questions:
+                        new_questions_exhausted = True
+                        raise ValueError(
+                            "Has agotado las preguntas nuevas para estos filtros. "
+                            "Puedes repetir las que ya has respondido."
+                        )
                 raise ValueError("No hay preguntas disponibles para estos filtros")
         except Exception as error:
-            context = _new_test_context(mode, str(error))
+            context = _new_test_context(
+                mode,
+                str(error),
+                selected_video_ids=chosen_videos,
+                new_questions_exhausted=new_questions_exhausted,
+            )
             context.update({"selected_count": count, "selected_start": start or "", "selected_until": until or ""})
             return page(request, "new_test.html", status_code=400, **context)
 

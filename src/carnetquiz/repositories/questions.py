@@ -47,8 +47,10 @@ def list_question_ids() -> set[str]:
 def question_statistics() -> dict[str, int]:
     with connect() as db:
         row = db.execute(
-            "SELECT COUNT(*) total, SUM(shown_count) shown, "
-            "SUM(correct_count) correct, SUM(wrong_count) wrong "
+            "SELECT COUNT(*) total, "
+            "SUM(CASE WHEN shown_count > 0 THEN 1 ELSE 0 END) seen, "
+            "SUM(CASE WHEN shown_count = 0 THEN 1 ELSE 0 END) remaining, "
+            "SUM(shown_count) shown, SUM(correct_count) correct, SUM(wrong_count) wrong "
             "FROM questions WHERE status='valid'"
         ).fetchone()
     return {key: int(row[key] or 0) for key in row.keys()}

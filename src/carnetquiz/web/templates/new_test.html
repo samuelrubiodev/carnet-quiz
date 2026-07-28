@@ -4,9 +4,14 @@
 <section class="page-header">
     <div><p class="eyebrow">Sesión de estudio</p><h1>Crear test</h1><p class="page-intro">Configura una sesión a tu ritmo. Puedes cambiar la selección antes de comenzar.</p></div>
 </section>
-{% if error %}<div class="alert alert-error" role="alert"><strong>No se puede comenzar el test.</strong><span>{{ error }}</span></div>{% endif %}
-
 <form class="test-builder" method="post" action="/tests" data-test-builder data-loading-form>
+{% if error %}
+<div class="alert alert-error" role="alert">
+    <strong>No se puede comenzar el test.</strong>
+    <span>{{ error }}</span>
+    {% if new_questions_exhausted %}<button class="button button-secondary" type="submit" name="repeat_answered" value="true">Repetir preguntas respondidas</button>{% endif %}
+</div>
+{% endif %}
     <section class="surface-panel builder-section" aria-labelledby="mode-title">
         <div class="builder-heading"><span class="builder-number">01</span><div><h2 id="mode-title">Elige el modo</h2><p>Selecciona cómo quieres practicar.</p></div></div>
         <fieldset class="mode-grid">
@@ -37,7 +42,7 @@
             <div class="selection-actions"><button class="text-button" type="button" data-select-all>Seleccionar todos</button><span aria-hidden="true">·</span><button class="text-button" type="button" data-select-none>Deseleccionar todos</button></div>
             <fieldset class="video-selection"><legend class="sr-only">Vídeos incluidos</legend>
                 {% for video in videos %}
-                <label class="video-choice"><input type="checkbox" name="video_ids" value="{{ video.id }}" checked><span class="check-mark" aria-hidden="true">✓</span><span class="video-choice-copy"><strong>{{ video.title }}</strong><span>{{ video.progress_percent }}% procesado · {{ video.question_count }} preguntas disponibles</span></span></label>
+                <label class="video-choice"><input type="checkbox" name="video_ids" value="{{ video.id }}" {% if selected_video_ids is none or video.id in selected_video_ids %}checked{% endif %}><span class="check-mark" aria-hidden="true">✓</span><span class="video-choice-copy"><strong>{{ video.title }}</strong><span>{{ video.progress_percent }}% procesado · {{ video.question_count }} en biblioteca · {{ video.remaining_question_count }} nuevas</span></span></label>
                 {% endfor %}
             </fieldset>
             {% else %}
